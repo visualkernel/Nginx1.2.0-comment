@@ -210,11 +210,11 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-	//解析命令行参数
+	//解析命令行参数，将一些参数值设置到全局变量中
     if (ngx_get_options(argc, argv) != NGX_OK) {
         return 1;
     }
-	//显示版本和命令帮助
+	//显示版本和命令帮助，针对参数-v,-V和-?,-h
     if (ngx_show_version) {
         ngx_write_stderr("nginx version: " NGINX_VER NGX_LINEFEED);
 
@@ -245,7 +245,7 @@ main(int argc, char *const *argv)
                                    "file" NGX_LINEFEED NGX_LINEFEED
                 );
         }
-
+		//针对参数-V，显示编译器版本和configure命令的参数
         if (ngx_show_configure) {
             ngx_write_stderr(
 #ifdef NGX_COMPILER
@@ -309,7 +309,7 @@ main(int argc, char *const *argv)
     if (ngx_process_options(&init_cycle) != NGX_OK) {
         return 1;
     }
-
+	//初始化与操作系统相关的信息
     if (ngx_os_init(log) != NGX_OK) {
         return 1;
     }
@@ -325,13 +325,13 @@ main(int argc, char *const *argv)
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
-
+	//按序初始化每个模块的索引index
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
         ngx_modules[i]->index = ngx_max_module++;
     }
 	
-	//读取和解析配置文件
+	//读取和解析配置文件，根据配置信息生成新的cycle对象
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
@@ -341,16 +341,16 @@ main(int argc, char *const *argv)
 
         return 1;
     }
-
+	//针对参数选项-t和-q(在测试配置文件期间不输出错误信息)
     if (ngx_test_config) {
-        if (!ngx_quiet_mode) {
+        if (!ngx_quiet_mode) {//-q
             ngx_log_stderr(0, "configuration file %s test is successful",
                            cycle->conf_file.data);
         }
 
         return 0;
     }
-
+	//针对参数选项-s signal[stop, quit, reopen, reload]
     if (ngx_signal) {
         return ngx_signal_process(cycle, ngx_signal);
     }
@@ -366,13 +366,13 @@ main(int argc, char *const *argv)
     }
 
 #if !(NGX_WIN32)
-
+	//注册信号处理函数
     if (ngx_init_signals(cycle->log) != NGX_OK) {
         return 1;
     }
-
+	//以守护进程方式运行，daemon on(默认配置)
     if (!ngx_inherited && ccf->daemon) {
-        if (ngx_daemon(cycle->log) != NGX_OK) {//以守护进程方式运行
+        if (ngx_daemon(cycle->log) != NGX_OK) {
             return 1;
         }
 
@@ -384,11 +384,11 @@ main(int argc, char *const *argv)
     }
 
 #endif
-
+	//创建pid文件
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
-
+	//如果日志输出到日志文件，将stderr重定向日志文件
     if (cycle->log->file->fd != ngx_stderr) {
 
         if (ngx_set_stderr(cycle->log->file->fd) == NGX_FILE_ERROR) {
@@ -397,7 +397,7 @@ main(int argc, char *const *argv)
             return 1;
         }
     }
-
+	//关闭程序启动初时使用的日志文件
     if (log->file->fd != ngx_stderr) {
         if (ngx_close_file(log->file->fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -406,11 +406,11 @@ main(int argc, char *const *argv)
     }
 
     ngx_use_stderr = 0;
-
+	//单进程模式，master_process off(主要用于调试)
     if (ngx_process == NGX_PROCESS_SINGLE) {
         ngx_single_process_cycle(cycle);
 
-    } else {
+    } else {//主从模式，master_process on(默认配置)
         ngx_master_process_cycle(cycle);
     }
 

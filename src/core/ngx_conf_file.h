@@ -165,7 +165,7 @@ typedef char *(*ngx_conf_handler_pt)(ngx_conf_t *cf,
 
 struct ngx_conf_s {
     char                 *name;
-    ngx_array_t          *args;
+    ngx_array_t          *args;//配置项参数,每个元素是ngx_str_t类型，第0个是配置项名称，第1个是第一个参数...
 
     ngx_cycle_t          *cycle;
     ngx_pool_t           *pool;

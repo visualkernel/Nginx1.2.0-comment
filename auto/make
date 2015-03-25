@@ -39,7 +39,7 @@ fi
 ngx_incs=`echo $CORE_INCS $NGX_OBJS $HTTP_INCS $MAIL_INCS\
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
-
+#所有头文件所在的所有目录
 cat << END                                                    >> $NGX_MAKEFILE
 
 ALL_INCS = $ngx_include_opt$ngx_incs
@@ -51,7 +51,7 @@ ngx_all_srcs="$CORE_SRCS"
 
 
 # the core dependences and include pathes
-
+#核心模块依赖的头文件及其所在目录
 ngx_deps=`echo $CORE_DEPS $NGX_AUTO_CONFIG_H $NGX_PCH \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
@@ -71,7 +71,7 @@ END
 
 
 # the http dependences and include pathes
-
+#HTTP模块依赖的头文件及其所在目录
 if [ $HTTP = YES ]; then
 
     ngx_all_srcs="$ngx_all_srcs $HTTP_SRCS"
@@ -97,7 +97,7 @@ fi
 
 
 # the mail dependences and include pathes
-
+#MAIL模块依赖的头文件及其所在目录
 if [ $MAIL = YES ]; then
 
     ngx_all_srcs="$ngx_all_srcs $MAIL_SRCS"
@@ -124,7 +124,7 @@ fi
 
 ngx_all_srcs="$ngx_all_srcs $NGX_MISC_SRCS"
 
-
+#第三方模块依赖的头文件及其所在目录
 if test -n "$NGX_ADDON_SRCS"; then
 
 cat << END                                                >> $NGX_MAKEFILE

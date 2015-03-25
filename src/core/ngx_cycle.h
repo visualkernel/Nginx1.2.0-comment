@@ -35,8 +35,8 @@ struct ngx_shm_zone_s {
 
 
 struct ngx_cycle_s {
-    void                  ****conf_ctx;
-    ngx_pool_t               *pool;
+    void                  ****conf_ctx;//保存了所有模块的配置项结构体指针，其每个成员指向另外存储着指针的数组
+    ngx_pool_t               *pool;//内存池
 
     ngx_log_t                *log;
     ngx_log_t                 new_log;
@@ -69,36 +69,36 @@ struct ngx_cycle_s {
     ngx_str_t                 hostname;
 };
 
-
+//Core配置项（main上下文）
 typedef struct {
-     ngx_flag_t               daemon;/* 是否为守护进程 */
-     ngx_flag_t               master;/* 是否为主-工作者进程模式*/
+     ngx_flag_t               daemon;/* 是否为守护进程，daemon配置项 */
+     ngx_flag_t               master;/* 是否为主-工作者进程模式，master_process配置项*/
 
-     ngx_msec_t               timer_resolution;
+     ngx_msec_t               timer_resolution;//系统调用gettimeofday的执行频率，timer_resolution配置项
 
-     ngx_int_t                worker_processes; /* 工作者进程数 */
-     ngx_int_t                debug_points;
+     ngx_int_t                worker_processes; /* 工作者进程数，worker_processes配置项 */
+     ngx_int_t                debug_points;//调试点,debug_points配置项
 
-     ngx_int_t                rlimit_nofile;
-     ngx_int_t                rlimit_sigpending;
-     off_t                    rlimit_core;
+     ngx_int_t                rlimit_nofile;//?
+     ngx_int_t                rlimit_sigpending;//限制信号队列的大小，如果信号队列已满，用户再发送的信号会被丢掉，worker_rlimit_sigpending配置项
+     off_t                    rlimit_core;//限制coredump产生core文件大小，worker_rlimit_core配置项
 
-     int                      priority;
+     int                      priority;//worker进程的优先级，worker_priority配置项
 
      ngx_uint_t               cpu_affinity_n;
-     uint64_t                *cpu_affinity;
+     uint64_t                *cpu_affinity;//绑定worker进程到指定cpu,worker_cpu_affinity配置项
 
-     char                    *username;
+     char                    *username;//worker进程运行的用户和用户组，user配置项
      ngx_uid_t                user;
      ngx_gid_t                group;
 
-     ngx_str_t                working_directory;
-     ngx_str_t                lock_file;
+     ngx_str_t                working_directory;//worker进程的工作目录，用于指定core文件的保存目录,working_directory配置项
+     ngx_str_t                lock_file;//锁文件，用于实现accept_mutex互斥和共享内存的序列化访问，lock_file配置项
 
-     ngx_str_t                pid;
+     ngx_str_t                pid;//保存master进程pid的文件路径，pid配置项
      ngx_str_t                oldpid;
 
-     ngx_array_t              env;
+     ngx_array_t              env;//设置环境变量，env配置项
      char                   **environment;
 
 #if (NGX_THREADS)

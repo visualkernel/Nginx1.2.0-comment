@@ -3,11 +3,11 @@
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
 
-#解析命令参数，设置全局变量
+#解析命令参数，设置全局变量(标志和文件路径)
 . auto/options
 #设置make前需动态生成的文件路径变量，如Makefile, ngx_modules.c等，创建Makefile
 . auto/init
-#根据源码结构，设置模块和相关操作系统平台的源文件路径变量，用于以后生成Makefile
+#根据源码结构，设置模块和相关操作系统平台的源文件路径以及依赖关系的变量，用于以后生成Makefile
 . auto/sources
 
 #创建编译后目标文件存放目录，可由--builddir=参数指定，默认是<nginx-dir>/objs目录
@@ -103,7 +103,7 @@ have=NGX_HTTP_UWSGI_TEMP_PATH value="\"$NGX_HTTP_UWSGI_TEMP_PATH\""
 have=NGX_HTTP_SCGI_TEMP_PATH value="\"$NGX_HTTP_SCGI_TEMP_PATH\""
 . auto/define
 
-#创建objs/Makefile
+#创建objs及其子目录，和objs/Makefile文件
 . auto/make
 #为objs/Makefile增加第三方库
 . auto/lib/make

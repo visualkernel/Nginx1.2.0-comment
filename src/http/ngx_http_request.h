@@ -166,8 +166,9 @@ typedef struct {
 
 
 typedef struct {
+	/*所有解析过的HTTP头部,链表的每个元素是ngx_table_elt_t类型*/
     ngx_list_t                        headers;
-
+	/*下面ngx_table_elt_t类型成员是与RFC2616规范中定义的头部*/
     ngx_table_elt_t                  *host;
     ngx_table_elt_t                  *connection;
     ngx_table_elt_t                  *if_modified_since;
@@ -211,17 +212,18 @@ typedef struct {
     ngx_table_elt_t                  *overwrite;
     ngx_table_elt_t                  *date;
 #endif
-
+	/* user和passwd只有在ngx_http_auth_basic_module模块才会用的成员 */
     ngx_str_t                         user;
     ngx_str_t                         passwd;
 
     ngx_array_t                       cookies;
 
-    ngx_str_t                         server;
-    off_t                             content_length_n;
+    ngx_str_t                         server; /* server名称 */
+    off_t                             content_length_n;/* 根据ngx_table_elt_t *content_length计算出的HTTP包体大小*/
     time_t                            keep_alive_n;
-
+	/*连接类型,取值范围为0,NGX_HTTP_CONNECTION_CLOSE,NGX_HTTP_CONNECTION_KEEP_ALIVE*/
     unsigned                          connection_type:2;
+	/* 根据浏览器传来的useragent头部，来判断浏览器的类型*/
     unsigned                          msie:1;
     unsigned                          msie6:1;
     unsigned                          opera:1;
@@ -229,15 +231,17 @@ typedef struct {
     unsigned                          chrome:1;
     unsigned                          safari:1;
     unsigned                          konqueror:1;
-} ngx_http_headers_in_t;
+} ngx_http_headers_in_t;/*HTTP包头*/
 
 
 typedef struct {
+	/*待发送的头部链表*/
     ngx_list_t                        headers;
-
+	/* 响应状态 */
     ngx_uint_t                        status;
+	/* 响应状态行, 如"HTTP/1.1 201 CREATED"*/
     ngx_str_t                         status_line;
-
+	/* 下面是RFC2616中规定的响应头部 */
     ngx_table_elt_t                  *server;
     ngx_table_elt_t                  *date;
     ngx_table_elt_t                  *content_length;
@@ -252,7 +256,7 @@ typedef struct {
     ngx_table_elt_t                  *etag;
 
     ngx_str_t                        *override_charset;
-
+	
     size_t                            content_type_len;
     ngx_str_t                         content_type;
     ngx_str_t                         charset;
@@ -260,11 +264,11 @@ typedef struct {
     ngx_uint_t                        content_type_hash;
 
     ngx_array_t                       cache_control;
-
+	/*内容长度*/
     off_t                             content_length_n;
     time_t                            date_time;
     time_t                            last_modified_time;
-} ngx_http_headers_out_t;
+} ngx_http_headers_out_t;/* 响应头部 */
 
 
 typedef void (*ngx_http_client_body_handler_pt)(ngx_http_request_t *r);
@@ -365,13 +369,13 @@ struct ngx_http_request_s {
     ngx_array_t                      *upstream_states;
                                          /* of ngx_http_upstream_state_t */
 
-    ngx_pool_t                       *pool;
+    ngx_pool_t                       *pool;/* 内存池 */
     ngx_buf_t                        *header_in;
 
-    ngx_http_headers_in_t             headers_in;
-    ngx_http_headers_out_t            headers_out;
+    ngx_http_headers_in_t             headers_in;/*HTTP请求头部*/
+    ngx_http_headers_out_t            headers_out;/*响应头部*/
 
-    ngx_http_request_body_t          *request_body;
+    ngx_http_request_body_t          *request_body;/*HTTP请求包体*/
 
     time_t                            lingering_time;
     time_t                            start_sec;
