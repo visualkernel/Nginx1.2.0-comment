@@ -38,7 +38,7 @@ ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
 
 ngx_signal_t  signals[] = {
     { ngx_signal_value(NGX_RECONFIGURE_SIGNAL),
-      "SIG" ngx_value(NGX_RECONFIGURE_SIGNAL),
+      "SIG" ngx_value(NGX_RECONFIGURE_SIGNAL),//重启master进程
       "reload",
       ngx_signal_handler },
 
@@ -62,7 +62,7 @@ ngx_signal_t  signals[] = {
       "quit",
       ngx_signal_handler },
 
-    { ngx_signal_value(NGX_CHANGEBIN_SIGNAL),
+    { ngx_signal_value(NGX_CHANGEBIN_SIGNAL),//平滑升级，修改执行文件
       "SIG" ngx_value(NGX_CHANGEBIN_SIGNAL),
       "",
       ngx_signal_handler },
@@ -356,7 +356,7 @@ ngx_signal_handler(int signo)
             ngx_reopen = 1;
             action = ", reopening logs";
             break;
-
+		//平滑升级
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
             if (getppid() > 1 || ngx_new_binary > 0) {
 

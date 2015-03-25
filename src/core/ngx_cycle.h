@@ -47,7 +47,7 @@ struct ngx_cycle_s {
 
     ngx_queue_t               reusable_connections_queue;
 
-    ngx_array_t               listening;
+    ngx_array_t               listening;//每个成员为ngx_listening_t类型,表示监听端口及相关参数
     ngx_array_t               pathes;
     ngx_list_t                open_files;
     ngx_list_t                shared_memory;

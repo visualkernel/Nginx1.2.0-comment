@@ -260,8 +260,8 @@ main(int argc, char *const *argv)
 #endif
                 "configure arguments:" NGX_CONFIGURE NGX_LINEFEED);
         }
-
-        if (!ngx_test_config) {//不是测试配置文件，则直接退出
+		//不是测试配置文件，则直接退出
+        if (!ngx_test_config) {
             return 0;
         }
     }
@@ -273,8 +273,8 @@ main(int argc, char *const *argv)
 #if (NGX_PCRE)
     ngx_regex_init();
 #endif
-
-    ngx_pid = ngx_getpid();//获取当前进程的pid
+	//获取当前master进程的pid
+    ngx_pid = ngx_getpid();
 
     log = ngx_log_init(ngx_prefix);
     if (log == NULL) {
@@ -294,8 +294,8 @@ main(int argc, char *const *argv)
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
-
-    init_cycle.pool = ngx_create_pool(1024, log);//创建1k大小的内存池
+	//创建1k大小的内存池
+    init_cycle.pool = ngx_create_pool(1024, log);
     if (init_cycle.pool == NULL) {
         return 1;
     }
@@ -321,7 +321,20 @@ main(int argc, char *const *argv)
     if (ngx_crc32_table_init() != NGX_OK) {
         return 1;
     }
+	//如果是平滑升级，master进程使用execve系统调用启动新版本，旧版本通过环境变量向新版本传递信息，
+	//ngx_add_inherited_sockets读取环境变量中的数据信息
+	/*
+	 * Makefile中的平滑升级命令：
+	 * 
+	 * upgrade:
+		/usr/local/nginx/sbin/nginx -t
 
+		kill -USR2 `cat /usr/local/nginx/logs/nginx.pid`
+		sleep 1
+		test -f /usr/local/nginx/logs/nginx.pid.oldbin
+
+		kill -QUIT `cat /usr/local/nginx/logs/nginx.pid.oldbin`
+	 */
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
@@ -351,6 +364,7 @@ main(int argc, char *const *argv)
         return 0;
     }
 	//针对参数选项-s signal[stop, quit, reopen, reload]
+	//将stop, quit, reopen, reload映射到系统信号，再使用kill向进程发送系统信号
     if (ngx_signal) {
         return ngx_signal_process(cycle, ngx_signal);
     }
@@ -417,16 +431,16 @@ main(int argc, char *const *argv)
     return 0;
 }
 
-
+//平滑升级
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
     u_char           *p, *v, *inherited;
     ngx_int_t         s;
     ngx_listening_t  *ls;
-
+	//获取环境变量“NGINX”的值
     inherited = (u_char *) getenv(NGINX_VAR);
-
+	//如果环境变量“NGINX”，则表示非平滑升级，直接返回
     if (inherited == NULL) {
         return NGX_OK;
     }
@@ -569,7 +583,13 @@ tz_found:
     return env;
 }
 
-
+/**
+ * 重新启动新的nginx，主要用于平滑升级
+ * @brief 
+ * @param cycle master的生命周期对象
+ * @param argv nginx启动时的命令行参数
+ * @return 
+ */
 ngx_pid_t
 ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
@@ -646,7 +666,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
         return NGX_INVALID_PID;
     }
-
+	//fork新的nginx master进程
     pid = ngx_execute(cycle, &ctx);
 
     if (pid == NGX_INVALID_PID) {
