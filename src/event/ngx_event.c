@@ -188,6 +188,7 @@ ngx_module_t  ngx_event_core_module = {
     NGX_EVENT_MODULE,                      /* module type */
     NULL,                                  /* init master */
     ngx_event_module_init,                 /* init module */
+	//该函数确定由哪个事件模型（模块）来处理请求
     ngx_event_process_init,                /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
@@ -245,6 +246,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 
     delta = ngx_current_msec;
 	/* 等待和处理监听的事件 */
+	/* #define ngx_process_events   ngx_event_actions.process_events*/
     (void) ngx_process_events(cycle, timer, flags);
 
     delta = ngx_current_msec - delta;
@@ -614,13 +616,13 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
         return NGX_ERROR;
     }
-	//执行指定配置事件模块的init函数（在配置文件使用use）
+	//执行use配置项指定事件模块的init函数
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
             continue;
         }
-
-        if (ngx_modules[m]->ctx_index != ecf->use) {//是否为配置中指定的I/O模型
+		//必须是use指定的模块
+        if (ngx_modules[m]->ctx_index != ecf->use) {
             continue;
         }
 
@@ -1025,9 +1027,10 @@ ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         module = ngx_modules[m]->ctx;
         if (module->name->len == value[1].len) {
+			//匹配事件的名称(value[1].data)，如epoll,select等
             if (ngx_strcmp(module->name->data, value[1].data) == 0) {
-                ecf->use = ngx_modules[m]->ctx_index;
-                ecf->name = module->name->data;
+                ecf->use = ngx_modules[m]->ctx_index;//事件模块的配置结构体的索引
+                ecf->name = module->name->data;//事件模型名称
 
                 if (ngx_process == NGX_PROCESS_SINGLE
                     && old_ecf

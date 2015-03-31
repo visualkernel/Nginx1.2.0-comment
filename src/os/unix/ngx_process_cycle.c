@@ -106,7 +106,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     sigaddset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
-
+	//设置屏蔽信号集(why?,在执行处理信号之间不允许接收以上的信号?)
     if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "sigprocmask() failed");
@@ -143,7 +143,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     delay = 0;
     sigio = 0;
     live = 1;
-
+	/* 循环等待和处理信号 */
     for ( ;; ) {
         if (delay) {
             if (ngx_sigalrm) {
@@ -778,7 +778,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     }
     }
 #endif
-
+	/* 循环处理各种事件，如IO，网络，定时器等*/
     for ( ;; ) {
 
         if (ngx_exiting) {
@@ -804,7 +804,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
-
+		//等待和处理各种事件
         ngx_process_events_and_timers(cycle);
 
         if (ngx_terminate) {

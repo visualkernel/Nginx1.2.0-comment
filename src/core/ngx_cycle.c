@@ -38,7 +38,15 @@ static ngx_connection_t  dumb;
 
 static ngx_str_t  error_log = ngx_string(NGX_ERROR_LOG_PATH);
 
-
+/*
+ * 	1.调用核心模块create_conf方法构建配置项结构体对象，
+	放置到cycle->conf_ctx数组中。
+	2.解析配置文件，调用每个配置项指令的set方法。
+	3.调用每个核心模块的init_conf方法
+	4.创建pid文件，创建全部操作的目录，创建共享内存，
+	处理所有监听套接字等
+	5.调用所有模块的init_module方法
+ */
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
@@ -398,7 +406,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     /* create shared memory */
-
+	//创建共享内存
     part = &cycle->shared_memory.part;
     shm_zone = part->elts;
 
@@ -464,7 +472,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
             break;
         }
-
+		
+		//分配共享内存数据空间
         if (ngx_shm_alloc(&shm_zone[i].shm) != NGX_OK) {
             goto failed;
         }
@@ -1275,7 +1284,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
             shm_zone = part->elts;
             i = 0;
         }
-
+		//名称匹配
         if (name->len != shm_zone[i].shm.name.len) {
             continue;
         }
@@ -1285,7 +1294,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
         {
             continue;
         }
-
+		//大小匹配
         if (size && size != shm_zone[i].shm.size) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                             "the size %uz of shared memory zone \"%V\" "
@@ -1293,7 +1302,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
                             size, &shm_zone[i].shm.name, shm_zone[i].shm.size);
             return NULL;
         }
-
+		//标签匹配
         if (tag != shm_zone[i].tag) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                             "the shared memory zone \"%V\" is "

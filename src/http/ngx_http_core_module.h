@@ -102,25 +102,28 @@ typedef struct {
     u_char                     addr[NGX_SOCKADDR_STRLEN + 1];
 } ngx_http_listen_opt_t;
 
-
+/*
+ * HTTP框架将处理流程划分11个阶段。
+ * 每个阶段都有各干个模块流水式的处理请求
+ * */
 typedef enum {
-    NGX_HTTP_POST_READ_PHASE = 0,
+    NGX_HTTP_POST_READ_PHASE = 0,//接收到完整的HTTP头部后处理HTTP阶段
 
-    NGX_HTTP_SERVER_REWRITE_PHASE,
+    NGX_HTTP_SERVER_REWRITE_PHASE,//重定向阶段
 
-    NGX_HTTP_FIND_CONFIG_PHASE,
-    NGX_HTTP_REWRITE_PHASE,
-    NGX_HTTP_POST_REWRITE_PHASE,
+    NGX_HTTP_FIND_CONFIG_PHASE,//根据URI匹配location表达式阶段
+    NGX_HTTP_REWRITE_PHASE,//找到匹配的location后再次重定向的阶段
+    NGX_HTTP_POST_REWRITE_PHASE,//重定向完成后的阶段
 
     NGX_HTTP_PREACCESS_PHASE,
 
-    NGX_HTTP_ACCESS_PHASE,
-    NGX_HTTP_POST_ACCESS_PHASE,
+    NGX_HTTP_ACCESS_PHASE,//判断请求是否可以访问nginx阶段
+    NGX_HTTP_POST_ACCESS_PHASE,//根据NGX_HTTP_ACCESS_PHASE判断的结果来处理请求的阶段
 
     NGX_HTTP_TRY_FILES_PHASE,
-    NGX_HTTP_CONTENT_PHASE,
+    NGX_HTTP_CONTENT_PHASE,//处理请求内容阶段
 
-    NGX_HTTP_LOG_PHASE
+    NGX_HTTP_LOG_PHASE//记录日志阶段
 } ngx_http_phases;
 
 typedef struct ngx_http_phase_handler_s  ngx_http_phase_handler_t;
@@ -177,7 +180,7 @@ typedef struct {
 
 typedef struct {
     /* array of the ngx_http_server_name_t, "server_name" directive */
-    ngx_array_t                 server_names;
+    ngx_array_t                 server_names;//主机名，server_name配置项
 
     /* server ctx */
     ngx_http_conf_ctx_t        *ctx;

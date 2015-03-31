@@ -343,8 +343,15 @@ main(int argc, char *const *argv)
     for (i = 0; ngx_modules[i]; i++) {
         ngx_modules[i]->index = ngx_max_module++;
     }
-	
-	//读取和解析配置文件，根据配置信息生成新的cycle对象
+	/*
+		1.调用核心模块create_conf方法构建配置项结构体对象，
+		  放置到cycle->conf_ctx数组中。
+		2.解析配置文件，调用每个配置项指令的set方法。
+		3.调用每个核心模块的init_conf方法
+		4.创建pid文件，创建全部操作的目录，创建共享内存，
+		  处理所有监听套接字等
+		5.调用所有模块的init_module方法
+	 */
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
@@ -431,7 +438,7 @@ main(int argc, char *const *argv)
     return 0;
 }
 
-//平滑升级
+//平滑升级，需要继承旧版nginx的socket
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
@@ -440,7 +447,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
     ngx_listening_t  *ls;
 	//获取环境变量“NGINX”的值
     inherited = (u_char *) getenv(NGINX_VAR);
-	//如果环境变量“NGINX”，则表示非平滑升级，直接返回
+	//如果环境变量“NGINX”不存在，则表示非平滑升级，直接返回
     if (inherited == NULL) {
         return NGX_OK;
     }

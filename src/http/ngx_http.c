@@ -93,7 +93,7 @@ static ngx_command_t  ngx_http_commands[] = {
 
 
 static ngx_core_module_t  ngx_http_module_ctx = {
-    ngx_string("http"),
+ngx_string("http"),//http{}块指令
     NULL,
     NULL
 };
@@ -138,7 +138,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     /* count the number of the http modules and set up their indices */
-
+	//设置HTTP模块ctx_index
     ngx_http_max_module = 0;
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
@@ -184,7 +184,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      * create the main_conf's, the null srv_conf's, and the null loc_conf's
      * of the all http modules
      */
-
+	//初始化ngx_http_conf_ctx_t结构体中的三个成员：main_conf，srv_conf，loc_conf
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
             continue;

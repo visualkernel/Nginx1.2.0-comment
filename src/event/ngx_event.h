@@ -34,9 +34,9 @@ typedef struct {
     ngx_event_t     *last;
 } ngx_event_mutex_t;
 
-
+/* 事件的结构体 */
 struct ngx_event_s {
-    void            *data;
+    void            *data;/* 处理的事件数据 */
 
     unsigned         write:1;
 
@@ -470,17 +470,17 @@ extern ngx_os_io_t  ngx_io;
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
 #define NGX_EVENT_CONF        0x02000000
 
-
+/* 事件配置项结构体 */
 typedef struct {
-    ngx_uint_t    connections;
-    ngx_uint_t    use;
+    ngx_uint_t    connections;//每个worker进程的最大连接数，worker_connections配置项
+    ngx_uint_t    use;//使用的事件模型，usr配置项，参数有epoll,select,poll,/dev/poll,kqueue,rtsig,eventport
 
-    ngx_flag_t    multi_accept;
-    ngx_flag_t    accept_mutex;
+    ngx_flag_t    multi_accept;//一个Worker进程每次只能接收一个新连接，multi_accept配置项
+    ngx_flag_t    accept_mutex;//实现负载均衡，实现轮流处理连接。accept_mutex配置项
 
-    ngx_msec_t    accept_mutex_delay;
+    ngx_msec_t    accept_mutex_delay;//在获取accept锁失败后，worker进程从新开始接收新连接的最大间隔时间。
 
-    u_char       *name;
+    u_char       *name;//事件模型名称(epoll,select,poll,/dev/poll,kqueue,rtsig,eventport)
 
 #if (NGX_DEBUG)
     ngx_array_t   debug_connection;
@@ -494,7 +494,7 @@ typedef struct {
     void                 *(*create_conf)(ngx_cycle_t *cycle);
     char                 *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 
-    ngx_event_actions_t     actions;
+    ngx_event_actions_t     actions;/* 事件模型的处理操作 */
 } ngx_event_module_t;
 
 

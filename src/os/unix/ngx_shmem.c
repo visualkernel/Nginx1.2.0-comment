@@ -8,7 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+/* 使用mmap实现共享内存 */
 #if (NGX_HAVE_MAP_ANON)
 
 ngx_int_t
@@ -77,7 +77,7 @@ ngx_shm_free(ngx_shm_t *shm)
                       "munmap(%p, %uz) failed", shm->addr, shm->size);
     }
 }
-
+/* 使用shmget实现共享内存 */
 #elif (NGX_HAVE_SYSVSHM)
 
 #include <sys/ipc.h>

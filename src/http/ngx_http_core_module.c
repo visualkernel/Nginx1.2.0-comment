@@ -3162,7 +3162,7 @@ ngx_http_core_preconfiguration(ngx_conf_t *cf)
     return ngx_http_variables_add_core_vars(cf);
 }
 
-
+//create_main_conf()
 static void *
 ngx_http_core_create_main_conf(ngx_conf_t *cf)
 {

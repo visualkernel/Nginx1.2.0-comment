@@ -68,9 +68,9 @@ static void ngx_slab_error(ngx_slab_pool_t *pool, ngx_uint_t level,
     char *text);
 
 
-static ngx_uint_t  ngx_slab_max_size;
-static ngx_uint_t  ngx_slab_exact_size;
-static ngx_uint_t  ngx_slab_exact_shift;
+static ngx_uint_t  ngx_slab_max_size;//2048
+static ngx_uint_t  ngx_slab_exact_size;//64
+static ngx_uint_t  ngx_slab_exact_shift;//6
 
 
 void
@@ -84,32 +84,45 @@ ngx_slab_init(ngx_slab_pool_t *pool)
 
     /* STUB */
     if (ngx_slab_max_size == 0) {
-        ngx_slab_max_size = ngx_pagesize / 2;
-        ngx_slab_exact_size = ngx_pagesize / (8 * sizeof(uintptr_t));
-        for (n = ngx_slab_exact_size; n >>= 1; ngx_slab_exact_shift++) {
+        ngx_slab_max_size = ngx_pagesize / 2;//2048,ngx_pagesize=4096
+        ngx_slab_exact_size = ngx_pagesize / (8 * sizeof(uintptr_t));//amd64,4096/64=64
+        for (n = ngx_slab_exact_size; n >>= 1; ngx_slab_exact_shift++) {//ngx_slab_exact_shift=6
             /* void */
         }
     }
     /**/
 
-    pool->min_size = 1 << pool->min_shift;
+    pool->min_size = 1 << pool->min_shift;//1<<3=8
 
+	//跳过ngx_slab_pool_t已占用的内存空间
     p = (u_char *) pool + sizeof(ngx_slab_pool_t);
-    size = pool->end - p;
+    size = pool->end - p;//剩余空间
 
     ngx_slab_junk(p, size);
 
+	//将剩余空间划分为9个ngx_slab_page_t
     slots = (ngx_slab_page_t *) p;
-    n = ngx_pagesize_shift - pool->min_shift;
-
+    n = ngx_pagesize_shift - pool->min_shift;//12-3=9
+	//分0~8级（8,16,32,64,128,256,512,1024,2048）
+	//每个分级对应的页内存划分为4096/(2^(i+3))个存储单元,最多可分为512个单元(i=0)，最少2个单元(i=8)
+	//slots[0]负责[1,8]区间大小的管理
+	//slots[1]负责[9,16]区间大小的管理
+	//slots[2]负责[17,32]区间大小的管理
+	//slots[3]负责[33,64]区间大小的管理
+	//slots[4]负责[65,128]区间大小的管理
+	//slots[5]负责[129,256]区间大小的管理
+	//slots[6]负责[257,512]区间大小的管理
+	//slots[7]负责[513,1024]区间大小的管理
+	//slots[8]负责[1025,2048]区间大小的管理
+	//slots[0],slots[1],slots[2]3个分级分别使用bitmap来标识哪些单元空闲或正使用,其它分级不使用bitmap(why?)
     for (i = 0; i < n; i++) {
         slots[i].slab = 0;
         slots[i].next = &slots[i];
         slots[i].prev = 0;
     }
-
+	//跳过9个分级ngx_slab_page_t占用的内存空间
     p += n * sizeof(ngx_slab_page_t);
-
+	//计算剩余空间（仅去除ngx_slab_pool_t大小）可划分的页面数目
     pages = (ngx_uint_t) (size / (ngx_pagesize + sizeof(ngx_slab_page_t)));
 
     ngx_memzero(p, pages * sizeof(ngx_slab_page_t));
@@ -122,7 +135,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     pool->pages->slab = pages;
     pool->pages->next = &pool->free;
     pool->pages->prev = (uintptr_t) &pool->free;
-
+	//跳过pages个ngx_slab_page_t占用内存空间
     pool->start = (u_char *)
                   ngx_align_ptr((uintptr_t) p + pages * sizeof(ngx_slab_page_t),
                                  ngx_pagesize);
@@ -161,6 +174,8 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
     ngx_uint_t        i, slot, shift, map;
     ngx_slab_page_t  *page, *prev, *slots;
 
+	//如果申请的空间>=ngx_slab_max_size(2048)，则直接申请页面
+	//否则，按分级进行分配
     if (size >= ngx_slab_max_size) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
@@ -178,7 +193,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
         goto done;
     }
-
+	//找到与申请大小匹配的分级slot
     if (size > pool->min_size) {
         shift = 1;
         for (s = size - 1; s >>= 1; shift++) { /* void */ }
@@ -195,12 +210,16 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
     slots = (ngx_slab_page_t *) ((u_char *) pool + sizeof(ngx_slab_pool_t));
     page = slots[slot].next;
-
+	//第一次分级分配时，page->next与page相同
     if (page->next != page) {
 
         if (shift < ngx_slab_exact_shift) {
 
             do {
+				//获取页面管理结构page对应的页面内存
+				//(page - pool->pages)=>页面编号
+				//(page - pool->pages) << ngx_pagesize_shift为对应编号的偏移地址
+				//pool->start为第0个页面的地址
                 p = (page - pool->pages) << ngx_pagesize_shift;
                 bitmap = (uintptr_t *) (pool->start + p);
 
@@ -327,23 +346,29 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
             } while (page);
         }
     }
-
+	//分配1个页面空间，得到对应页面的管理结构
     page = ngx_slab_alloc_pages(pool, 1);
-
+	//页面申请成功
     if (page) {
-        if (shift < ngx_slab_exact_shift) {
+        if (shift < ngx_slab_exact_shift) {//shift < 6，使用bitmap来记录使用情况
+			//访问页内存的位图
             p = (page - pool->pages) << ngx_pagesize_shift;
             bitmap = (uintptr_t *) (pool->start + p);
 
-            s = 1 << shift;
+            s = 1 << shift;//单元大小
+			//1 << (ngx_pagesize_shift - shift)表示1页分为多少个单元
+			//(1 << (ngx_pagesize_shift - shift)) / 8 需要使用多少个字节来表示这些单元
+			//计算需要多少个单元来存储bitmap
             n = (1 << (ngx_pagesize_shift - shift)) / 8 / s;
 
             if (n == 0) {
                 n = 1;
             }
-
+			
+			//设置bitmap
             bitmap[0] = (2 << n) - 1;
-
+			//计算需要多个64bit的bitmap来记录内存块的使用情况
+			//每个bit表示一个块
             map = (1 << (ngx_pagesize_shift - shift)) / (sizeof(uintptr_t) * 8);
 
             for (i = 1; i < map; i++) {
@@ -356,12 +381,13 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
             slots[slot].next = page;
 
+			//s * n表示bitmap已占用的字节数
             p = ((page - pool->pages) << ngx_pagesize_shift) + s * n;
             p += (uintptr_t) pool->start;
 
             goto done;
 
-        } else if (shift == ngx_slab_exact_shift) {
+        } else if (shift == ngx_slab_exact_shift) {//shift = 6
 
             page->slab = 1;
             page->next = &slots[slot];
@@ -374,7 +400,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
             goto done;
 
-        } else { /* shift > ngx_slab_exact_shift */
+        } else { /* shift > ngx_slab_exact_shift , shift > 6*/
 
             page->slab = ((uintptr_t) 1 << NGX_SLAB_MAP_SHIFT) | shift;
             page->next = &slots[slot];
@@ -617,26 +643,27 @@ fail:
     return;
 }
 
-
+/* 申请pages个页面, 返回页管理结构 */
 static ngx_slab_page_t *
 ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
 {
     ngx_slab_page_t  *page, *p;
-
+	/* 遍历所有空闲页面 */
     for (page = pool->free.next; page != &pool->free; page = page->next) {
-
+	
         if (page->slab >= pages) {
 
             if (page->slab > pages) {
-                page[pages].slab = page->slab - pages;
+                page[pages].slab = page->slab - pages;//设置连续空闲的页面数
                 page[pages].next = page->next;
                 page[pages].prev = page->prev;
-
+				
                 p = (ngx_slab_page_t *) page->prev;
                 p->next = &page[pages];
                 page->next->prev = (uintptr_t) &page[pages];
 
-            } else {
+            } else {//page-slab == pages
+				//将pages个页面从链表中分离
                 p = (ngx_slab_page_t *) page->prev;
                 p->next = page->next;
                 page->next->prev = page->prev;
@@ -646,10 +673,10 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
             page->next = NULL;
             page->prev = NGX_SLAB_PAGE;
 
-            if (--pages == 0) {
+            if (--pages == 0) {//只申请一个页面，不用设置slab状态
                 return page;
             }
-
+			//设置页面状态
             for (p = page + 1; pages; pages--) {
                 p->slab = NGX_SLAB_PAGE_BUSY;
                 p->next = NULL;
