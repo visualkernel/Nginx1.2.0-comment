@@ -38,14 +38,14 @@ struct ngx_cycle_s {
     void                  ****conf_ctx;//保存了所有模块的配置项结构体指针，其每个成员指向另外存储着指针的数组
     ngx_pool_t               *pool;//内存池
 
-    ngx_log_t                *log;
-    ngx_log_t                 new_log;
+    ngx_log_t                *log;//读取配置文件之前使用的日志对象
+    ngx_log_t                 new_log;//读取配置文件之后使用的日志对象
 
     ngx_connection_t        **files;
-    ngx_connection_t         *free_connections;
+    ngx_connection_t         *free_connections;//可用的连接池
     ngx_uint_t                free_connection_n;
 
-    ngx_queue_t               reusable_connections_queue;
+    ngx_queue_t               reusable_connections_queue;//可重复使用的连接队列
 
     ngx_array_t               listening;//每个成员为ngx_listening_t类型,表示监听端口及相关参数
     ngx_array_t               pathes;
@@ -55,18 +55,18 @@ struct ngx_cycle_s {
     ngx_uint_t                connection_n;
     ngx_uint_t                files_n;
 
-    ngx_connection_t         *connections;
-    ngx_event_t              *read_events;
-    ngx_event_t              *write_events;
+    ngx_connection_t         *connections;//当前进程上的所有连接对象
+    ngx_event_t              *read_events;//所有读事件对象
+    ngx_event_t              *write_events;//所有写事件对象
 
     ngx_cycle_t              *old_cycle;
 
-    ngx_str_t                 conf_file;
-    ngx_str_t                 conf_param;
-    ngx_str_t                 conf_prefix;
-    ngx_str_t                 prefix;
-    ngx_str_t                 lock_file;
-    ngx_str_t                 hostname;
+    ngx_str_t                 conf_file;//配置文件完整路径
+    ngx_str_t                 conf_param;//命令行-g指定的配置字符串
+    ngx_str_t                 conf_prefix;//配置文件目录路径
+    ngx_str_t                 prefix;//安装目录路径
+    ngx_str_t                 lock_file;//进程同步的锁文件名
+    ngx_str_t                 hostname;//主机名
 };
 
 //Core配置项（main上下文）
@@ -117,7 +117,7 @@ typedef struct {
 #define ngx_is_init_cycle(cycle)  (cycle->conf_ctx == NULL)
 
 
-ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
+ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);//解析old_cycle提供了配置文件，生成新的cycle
 ngx_int_t ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log);
 void ngx_delete_pidfile(ngx_cycle_t *cycle);
 ngx_int_t ngx_signal_process(ngx_cycle_t *cycle, char *sig);

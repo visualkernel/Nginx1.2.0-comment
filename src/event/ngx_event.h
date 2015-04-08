@@ -36,47 +36,47 @@ typedef struct {
 
 /* 事件的结构体 */
 struct ngx_event_s {
-    void            *data;/* 处理的事件数据 */
+    void            *data;/* 处理的事件数据，通常指向ngx_connection_t对象 */
 
-    unsigned         write:1;
+    unsigned         write:1;//事件可写
 
-    unsigned         accept:1;
+    unsigned         accept:1;//事件可建立连接
 
     /* used to detect the stale events in kqueue, rtsig, and epoll */
-    unsigned         instance:1;
+    unsigned         instance:1;//用于检测事件是否过期
 
     /*
      * the event was passed or would be passed to a kernel;
      * in aio mode - operation was posted.
      */
-    unsigned         active:1;
+    unsigned         active:1;//事件是否活跃
 
-    unsigned         disabled:1;
+    unsigned         disabled:1;//事件是否被禁用
 
     /* the ready event; in aio mode 0 means that no operation can be posted */
-    unsigned         ready:1;
+    unsigned         ready:1;//是否准备就绪
 
     unsigned         oneshot:1;
 
     /* aio operation is complete */
     unsigned         complete:1;
 
-    unsigned         eof:1;
-    unsigned         error:1;
+    unsigned         eof:1;//当前处理的字符流已结束
+    unsigned         error:1;//事件处理过程是否出现错误
 
-    unsigned         timedout:1;
-    unsigned         timer_set:1;
+    unsigned         timedout:1;//事件是否已超时
+    unsigned         timer_set:1;//事件是否存在定时器中
 
-    unsigned         delayed:1;
+    unsigned         delayed:1;//事件是否需要延迟处理
 
     unsigned         read_discarded:1;
 
     unsigned         unexpected_eof:1;
 
-    unsigned         deferred_accept:1;
+    unsigned         deferred_accept:1;//延迟建立连接，三次握手时不建立连接，而是等到真正数据到来时才建立
 
     /* the pending eof reported by kqueue or in aio chain operation */
-    unsigned         pending_eof:1;
+    unsigned         pending_eof:1;//等待字符流结束
 
 #if !(NGX_THREADS)
     unsigned         posted_ready:1;
@@ -114,7 +114,7 @@ struct ngx_event_s {
     unsigned         available:1;
 #endif
 
-    ngx_event_handler_pt  handler;
+    ngx_event_handler_pt  handler;//事件处理函数
 
 
 #if (NGX_HAVE_AIO)
@@ -131,9 +131,9 @@ struct ngx_event_s {
 
     ngx_log_t       *log;
 
-    ngx_rbtree_node_t   timer;
+    ngx_rbtree_node_t   timer;//定时器节点，用于定时器红黑树
 
-    unsigned         closed:1;
+    unsigned         closed:1;//事件已关闭
 
     /* to test on worker exit */
     unsigned         channel:1;
@@ -228,19 +228,24 @@ typedef struct {
 
 
 typedef struct {
+	//添加事件
     ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
-    ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
-
+    //删除事件
+	ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
+	//启事件事件
     ngx_int_t  (*enable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
-    ngx_int_t  (*disable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
-
+    //禁止事件
+	ngx_int_t  (*disable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
+	//添加一个连接
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
+	//删除一个连接
     ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
-
+	
     ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t nowait);
+	//处理事件
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
                    ngx_uint_t flags);
-
+	//初始化
     ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
     void       (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
@@ -488,13 +493,14 @@ typedef struct {
 } ngx_event_conf_t;
 
 
+/* 事件模块 */
 typedef struct {
-    ngx_str_t              *name;
+    ngx_str_t              *name;//事件模块名称
 
     void                 *(*create_conf)(ngx_cycle_t *cycle);
     char                 *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 
-    ngx_event_actions_t     actions;/* 事件模型的处理操作 */
+    ngx_event_actions_t     actions;/* 对于事件驱动机制，每个事件模块需要实现的处理操作 */
 } ngx_event_module_t;
 
 

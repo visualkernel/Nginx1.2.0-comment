@@ -112,7 +112,7 @@ struct ngx_module_s {
     ngx_uint_t            ctx_index; // 同模块下的索引序号
     ngx_uint_t            index;// 所有模块下的索引序号
 
-    ngx_uint_t            spare0;
+    ngx_uint_t            spare0;//备用字段
     ngx_uint_t            spare1;
     ngx_uint_t            spare2;
     ngx_uint_t            spare3;
@@ -123,7 +123,7 @@ struct ngx_module_s {
     ngx_command_t        *commands;/* 与模块相关的指令数组 */
     ngx_uint_t            type;//模块类型，由各种“标识”按“|”组合
 
-    ngx_int_t           (*init_master)(ngx_log_t *log);
+    ngx_int_t           (*init_master)(ngx_log_t *log);//为什么参数不是ngx_cycle_t?
 
     ngx_int_t           (*init_module)(ngx_cycle_t *cycle);
 
@@ -134,7 +134,7 @@ struct ngx_module_s {
 
     void                (*exit_master)(ngx_cycle_t *cycle);
 
-    uintptr_t             spare_hook0;
+    uintptr_t             spare_hook0;//备用字段
     uintptr_t             spare_hook1;
     uintptr_t             spare_hook2;
     uintptr_t             spare_hook3;

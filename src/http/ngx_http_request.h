@@ -353,7 +353,7 @@ struct ngx_http_request_s {
 
     ngx_connection_t                 *connection;
 
-    void                            **ctx;
+    void                            **ctx;/*请求上下文数组，保存了每个HTTP模块的上下文信息*/
     void                            **main_conf;
     void                            **srv_conf;
     void                            **loc_conf;

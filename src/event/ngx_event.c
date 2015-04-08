@@ -279,7 +279,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 }
 
-
+//添加读事件
 ngx_int_t
 ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 {
@@ -347,7 +347,8 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
     return NGX_OK;
 }
 
-
+//添加写事件
+//lowat:发送缓冲区的可用空间必须>=lowat时才触发写事件
 ngx_int_t
 ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 {
@@ -355,7 +356,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 
     if (lowat) {
         c = wev->data;
-
+		//设置发送缓冲区的可用空间的下限
         if (ngx_send_lowat(c, lowat) == NGX_ERROR) {
             return NGX_ERROR;
         }

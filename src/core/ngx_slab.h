@@ -19,13 +19,13 @@ struct ngx_slab_page_s {
 	/**
 	slab可能存储的值为：
 	    a.存储为些结构相连的pages的数目(slab page管理结构)
-	　　b.存储标记chunk使用情况的bitmap(size = exact_size)
-	　　c.存储chunk的大小(size < exact_size)
-	　　d.存储标记chunk的使用情况及chunk大小(size > exact_size)
+	　　b.存储标记chunk使用情况的bitmap(slots，size = exact_size)
+	　　c.存储表示chunk的大小的shift(低4bit)(slots，size < exact_size)
+	　　d.存储标记chunk的bitmap(高32bit)及表示chunk大小的shift(低4bit)(slots，size > exact_size)
      */
     uintptr_t         slab;
     ngx_slab_page_t  *next;
-    uintptr_t         prev;
+    uintptr_t         prev;//用低3bit表示分配类型(NGX_SLAB_PAGE,NGX_SLAB_BIG,NGX_SLAB_EXACT,NGX_SLAB_SMALL)
 };
 
 /* slab内存池:对共享内存进一步的内部划分与管理 */
@@ -35,7 +35,7 @@ typedef struct {
     size_t            min_size;/*最小分配单元字节大小,8字节*/
     size_t            min_shift;/*最小分配单元字节大小对应的位移,3（2^3=8）*/
 
-    ngx_slab_page_t  *pages;/* 页数组 */
+    ngx_slab_page_t  *pages;/* 页管理结构数组 */
     ngx_slab_page_t   free; /* 空闲页链表 */
 
     u_char           *start; /* 可分配空间的起始位置 */

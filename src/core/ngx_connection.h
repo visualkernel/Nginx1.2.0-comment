@@ -25,9 +25,9 @@ struct ngx_listening_s {
 
     int                 type;
 
-    int                 backlog;
-    int                 rcvbuf;
-    int                 sndbuf;
+    int                 backlog;//backlog队列长度
+    int                 rcvbuf;//内核接收缓冲区大小
+    int                 sndbuf;//内核发送缓冲区大小
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
     int                 keepidle;
     int                 keepintvl;
@@ -42,23 +42,23 @@ struct ngx_listening_s {
     ngx_log_t           log;
     ngx_log_t          *logp;
 
-    size_t              pool_size;
+    size_t              pool_size;//内存池初始大小
     /* should be here because of the AcceptEx() preread */
     size_t              post_accept_buffer_size;
     /* should be here because of the deferred accept */
     ngx_msec_t          post_accept_timeout;
 
-    ngx_listening_t    *previous;
+    ngx_listening_t    *previous;//多个ngx_listening_t对象由previous指针组成单链表
     ngx_connection_t   *connection;
 
     unsigned            open:1;
     unsigned            remain:1;
     unsigned            ignore:1;
 
-    unsigned            bound:1;       /* already bound */
+    unsigned            bound:1;       /* already bound 是否已绑定 */
     unsigned            inherited:1;   /* inherited from previous process */
     unsigned            nonblocking_accept:1;
-    unsigned            listen:1;
+    unsigned            listen:1;//是否已监听
     unsigned            nonblocking:1;
     unsigned            shared:1;    /* shared between threads or processes */
     unsigned            addr_ntop:1;

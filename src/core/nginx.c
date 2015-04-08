@@ -371,7 +371,8 @@ main(int argc, char *const *argv)
         return 0;
     }
 	//针对参数选项-s signal[stop, quit, reopen, reload]
-	//将stop, quit, reopen, reload映射到系统信号，再使用kill向进程发送系统信号
+	//将ngx_signal(取值为stop, quit, reopen, reload)映射到系统信号，
+    //再使用kill向nginx master进程发送系统信号
     if (ngx_signal) {
         return ngx_signal_process(cycle, ngx_signal);
     }
@@ -781,7 +782,7 @@ ngx_get_options(int argc, char *const *argv)
                     ngx_signal = (char *) p;
 
                 } else if (argv[++i]) {
-                    ngx_signal = argv[i];
+                    ngx_signal = argv[i];//stop,quit,reopen,reload
 
                 } else {
                     ngx_log_stderr(0, "option \"-s\" requires parameter");
@@ -1002,7 +1003,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     return ccf;
 }
 
-//初始化用户没有配置的值为默认值
+//将没有在配置文件中配置的值设置为默认值
 static char *
 ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {

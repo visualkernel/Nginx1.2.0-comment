@@ -962,11 +962,11 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
     (void) ngx_sprintf(file, "%V%V%Z", &cycle->lock_file, &zn->shm.name);
 
 #endif
-
+	//创建共享内存访问的互斥锁
     if (ngx_shmtx_create(&sp->mutex, &sp->lock, file) != NGX_OK) {
         return NGX_ERROR;
     }
-
+	//使用slab机制管理共享内存空间
     ngx_slab_init(sp);
 
     return NGX_OK;
@@ -1048,12 +1048,13 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    file.name = ccf->pid;
+    file.name = ccf->pid;//pid文件
     file.log = cycle->log;
 
+	//从pid文件中获取nginx master进程pid
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
                             NGX_FILE_OPEN, NGX_FILE_DEFAULT_ACCESS);
-
+	//没有找到pid文件或打开失败
     if (file.fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
                       ngx_open_file_n " \"%s\" failed", file.name.data);
@@ -1070,7 +1071,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
     if (n == NGX_ERROR) {
         return 1;
     }
-
+	//检测\r或\n，在转换成整数时要去掉这两个字符
     while (n-- && (buf[n] == CR || buf[n] == LF)) { /* void */ }
 
     pid = ngx_atoi(buf, ++n);
@@ -1081,7 +1082,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
                       n, buf, file.name.data);
         return 1;
     }
-
+	//向nginx master进程发送信号
     return ngx_os_signal_process(cycle, sig, pid);
 
 }

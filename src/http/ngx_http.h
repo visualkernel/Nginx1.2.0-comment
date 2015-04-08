@@ -60,7 +60,7 @@ typedef struct {
     u_char              *end;
 } ngx_http_status_t;
 
-
+/* 获取和设置某个请求r的某个模块module的上下文对象 */
 #define ngx_http_get_module_ctx(r, module)  (r)->ctx[module.ctx_index]
 #define ngx_http_set_ctx(r, c, module)      r->ctx[module.ctx_index] = c;
 

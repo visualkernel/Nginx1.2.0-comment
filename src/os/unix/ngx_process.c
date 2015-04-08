@@ -32,7 +32,7 @@ char           **ngx_os_argv;
 
 ngx_int_t        ngx_process_slot;
 ngx_socket_t     ngx_channel;
-ngx_int_t        ngx_last_process;
+ngx_int_t        ngx_last_process;//子进程的个数
 ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];//进程数组，长度为1024
 
 
@@ -100,7 +100,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
                 break;
             }
         }
-
+		//进程数超过了最大限制
         if (s == NGX_MAX_PROCESSES) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "no more than %d processes can be spawned",
@@ -175,7 +175,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
 
         ngx_channel = ngx_processes[s].channel[1];
 
-    } else {
+    } else {//如果子进程独立，则不需要channel通信
         ngx_processes[s].channel[0] = -1;
         ngx_processes[s].channel[1] = -1;
     }
@@ -216,7 +216,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     ngx_processes[s].name = name;
     ngx_processes[s].exiting = 0;
 
-    switch (respawn) {
+    switch (respawn) {//设置spawn状态
 
     case NGX_PROCESS_NORESPAWN:
         ngx_processes[s].respawn = 0;
@@ -279,17 +279,17 @@ ngx_execute_proc(ngx_cycle_t *cycle, void *data)
     exit(1);
 }
 
-
+//注册信号处理函数
 ngx_int_t
 ngx_init_signals(ngx_log_t *log)
 {
     ngx_signal_t      *sig;
     struct sigaction   sa;
-
+    //为预声明的所有信号注册处理函数
     for (sig = signals; sig->signo != 0; sig++) {
         ngx_memzero(&sa, sizeof(struct sigaction));
-        sa.sa_handler = sig->handler;
-        sigemptyset(&sa.sa_mask);
+        sa.sa_handler = sig->handler;//注册处理函数
+        sigemptyset(&sa.sa_mask);//清空阻塞信号集
         if (sigaction(sig->signo, &sa, NULL) == -1) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           "sigaction(%s) failed", sig->signame);
@@ -300,7 +300,7 @@ ngx_init_signals(ngx_log_t *log)
     return NGX_OK;
 }
 
-
+//信号处理函数
 void
 ngx_signal_handler(int signo)
 {
@@ -330,13 +330,13 @@ ngx_signal_handler(int signo)
         switch (signo) {
 
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
-            ngx_quit = 1;
+            ngx_quit = 1;//设置退出标志
             action = ", shutting down";
             break;
 
         case ngx_signal_value(NGX_TERMINATE_SIGNAL):
         case SIGINT:
-            ngx_terminate = 1;
+            ngx_terminate = 1;//设置终止标志
             action = ", exiting";
             break;
 
@@ -348,12 +348,12 @@ ngx_signal_handler(int signo)
             break;
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
-            ngx_reconfigure = 1;
+            ngx_reconfigure = 1;//设置重新加载配置文件标志
             action = ", reconfiguring";
             break;
 
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
-            ngx_reopen = 1;
+            ngx_reopen = 1;//设置重新打开日志标志
             action = ", reopening logs";
             break;
 		//平滑升级
@@ -608,7 +608,13 @@ ngx_debug_point(void)
     }
 }
 
-
+/**
+ * @brief 使用kill向进程发送信号
+ * @param cycle 服务器生命周期对象
+ * @param name 信号别名
+ * @param pid 接受信号的进程pid
+ * @return 
+ */
 ngx_int_t
 ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_int_t pid)
 {

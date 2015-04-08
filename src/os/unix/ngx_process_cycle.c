@@ -186,7 +186,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             ngx_master_process_exit(cycle);
         }
 
-        if (ngx_terminate) {
+        if (ngx_terminate) {//终止
             if (delay == 0) {
                 delay = 50;
             }
@@ -208,7 +208,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_quit) {
+        if (ngx_quit) {//退出
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
 
@@ -363,7 +363,7 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
     for (i = 0; i < n; i++) {
 
         cpu_affinity = ngx_get_cpu_affinity(i);
-
+		/* 创建进程，新进程主体执行函数为ngx_worker_process_cycle */
         ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
                           "worker process", type);
 
@@ -520,7 +520,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
         {
             continue;
         }
-
+		//向子进程发送命令
         if (ch.command) {
             if (ngx_write_channel(ngx_processes[i].channel[0],
                                   &ch, sizeof(ngx_channel_t), cycle->log)
@@ -537,6 +537,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                        "kill (%P, %d)" , ngx_processes[i].pid, signo);
 
+		//向子进程发送信号
         if (kill(ngx_processes[i].pid, signo) == -1) {
             err = ngx_errno;
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
@@ -586,7 +587,7 @@ ngx_reap_children(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_processes[i].exited) {
+        if (ngx_processes[i].exited) {//子进程已退出
 
             if (!ngx_processes[i].detached) {
                 ngx_close_channel(ngx_processes[i].channel, cycle->log);
@@ -610,7 +611,7 @@ ngx_reap_children(ngx_cycle_t *cycle)
                                    ch.slot, ch.pid, ngx_processes[n].pid);
 
                     /* TODO: NGX_AGAIN */
-
+					//向其它进程发送关闭Channel命令
                     ngx_write_channel(ngx_processes[n].channel[0],
                                       &ch, sizeof(ngx_channel_t), cycle->log);
                 }
@@ -687,17 +688,18 @@ static void
 ngx_master_process_exit(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
-
+	//删除pid文件
     ngx_delete_pidfile(cycle);
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exit");
 
+	//执行所有模块的exit_master方法
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->exit_master) {
             ngx_modules[i]->exit_master(cycle);
         }
     }
-
+	//关闭监听套接字
     ngx_close_listening_sockets(cycle);
 
     /*
@@ -714,13 +716,13 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 
     ngx_exit_cycle.log = &ngx_exit_log;
     ngx_cycle = &ngx_exit_cycle;
-
+	//删除内存池
     ngx_destroy_pool(cycle->pool);
 
     exit(0);
 }
 
-
+/* worker进程执行的主函数 */
 static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
@@ -781,7 +783,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 	/* 循环处理各种事件，如IO，网络，定时器等*/
     for ( ;; ) {
 
-        if (ngx_exiting) {
+        if (ngx_exiting) {//退出
 
             c = cycle->connections;
 
@@ -804,16 +806,16 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
-		//等待和处理各种事件
+		//等待和处理各种事件和定时器
         ngx_process_events_and_timers(cycle);
 
-        if (ngx_terminate) {
+        if (ngx_terminate) {//终止
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 
             ngx_worker_process_exit(cycle);
         }
 
-        if (ngx_quit) {
+        if (ngx_quit) {//退出
             ngx_quit = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                           "gracefully shutting down");
@@ -1002,7 +1004,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
     }
 }
 
-
+/* worker进程退出 */
 static void
 ngx_worker_process_exit(ngx_cycle_t *cycle)
 {
@@ -1014,7 +1016,7 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
 
     ngx_wakeup_worker_threads(cycle);
 #endif
-
+	//执行每个进程的exit_process方法
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->exit_process) {
             ngx_modules[i]->exit_process(cycle);
