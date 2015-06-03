@@ -31,7 +31,10 @@ extern ngx_mutex_t  *ngx_event_timer_mutex;
 
 extern ngx_thread_volatile ngx_rbtree_t  ngx_event_timer_rbtree;
 
-
+/**
+ * @brief 从红黑树中移除事件ev
+ * @param ev
+ */
 static ngx_inline void
 ngx_event_del_timer(ngx_event_t *ev)
 {
@@ -40,7 +43,7 @@ ngx_event_del_timer(ngx_event_t *ev)
                     ngx_event_ident(ev->data), ev->timer.key);
 
     ngx_mutex_lock(ngx_event_timer_mutex);
-
+	//将事件相关的定时器从红黑树中删除
     ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
 
     ngx_mutex_unlock(ngx_event_timer_mutex);
@@ -54,7 +57,11 @@ ngx_event_del_timer(ngx_event_t *ev)
     ev->timer_set = 0;
 }
 
-
+/**
+ * @brief 向红黑树中添加事件ev,事件ev的超时时间为从当前时间开始之后的timer毫秒
+ * @param ev
+ * @param timer 超时毫秒数，相对当前时间的毫秒
+ */
 static ngx_inline void
 ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
@@ -83,14 +90,14 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
         ngx_del_timer(ev);
     }
 
-    ev->timer.key = key;
+    ev->timer.key = key;//将超时时间设置为key
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "event timer add: %d: %M:%M",
                     ngx_event_ident(ev->data), timer, ev->timer.key);
 
     ngx_mutex_lock(ngx_event_timer_mutex);
-
+	//将定时器加入到红黑树中
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ev->timer);
 
     ngx_mutex_unlock(ngx_event_timer_mutex);

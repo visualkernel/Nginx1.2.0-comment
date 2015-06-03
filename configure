@@ -26,13 +26,15 @@ if [ $NGX_DEBUG = YES ]; then
     have=NGX_DEBUG . auto/have
 fi
 
-#检测操作系统，如果没有指定操作系统平台，由脚本自动识别平台
+#检测操作系统，如果没有指定操作系统平台(可由--crossbuild=参数指定)，由脚本自动识别平台
 if test -z "$NGX_PLATFORM"; then
     echo "checking for OS"
-
-    NGX_SYSTEM=`uname -s 2>/dev/null`#操作系统名称，如Linux
-    NGX_RELEASE=`uname -r 2>/dev/null`#内核版本，如3.16.0-30-generic
-    NGX_MACHINE=`uname -m 2>/dev/null`#机器架构，如x86_64
+	#操作系统名称，如Linux
+    NGX_SYSTEM=`uname -s 2>/dev/null`
+	#内核版本，如3.16.0-30-generic
+    NGX_RELEASE=`uname -r 2>/dev/null`
+	#机器架构，如x86_64
+    NGX_MACHINE=`uname -m 2>/dev/null`
 
     echo " + $NGX_SYSTEM $NGX_RELEASE $NGX_MACHINE"
 
@@ -44,7 +46,7 @@ if test -z "$NGX_PLATFORM"; then
         ;;
     esac
 
-else#如果指定了操作系统平台，可由--crossbuild=参数指定。
+else
     echo "building for $NGX_PLATFORM"
     NGX_SYSTEM=$NGX_PLATFORM
 fi

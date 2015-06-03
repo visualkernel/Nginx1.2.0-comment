@@ -28,7 +28,9 @@ ngx_os_io_t ngx_os_io = {
     0
 };
 
-
+/*初始化与操作系统相关的参数
+ * 如：页大小、cpu信息、内核限制参数等
+ * */
 ngx_int_t
 ngx_os_init(ngx_log_t *log)
 {

@@ -15,9 +15,9 @@
 
 
 typedef struct {
-    void        **main_conf;
-    void        **srv_conf;
-    void        **loc_conf;
+    void        **main_conf;//指针数组，数组每个元素指向对应模块create_main_conf创建配置
+    void        **srv_conf;//指针数组，数组每个元素指向对应模块create_srv_conf创建配置
+    void        **loc_conf;//指针数组，数组每个元素指向对应模块create_loc_conf创建配置
 } ngx_http_conf_ctx_t;
 
 
@@ -64,7 +64,7 @@ typedef struct {
     ((ngx_http_conf_ctx_t *) cf->ctx)->srv_conf[module.ctx_index]
 #define ngx_http_conf_get_module_loc_conf(cf, module)                         \
     ((ngx_http_conf_ctx_t *) cf->ctx)->loc_conf[module.ctx_index]
-
+//通过ngx_cycle_t找到模块module的main_conf对象
 #define ngx_http_cycle_get_module_main_conf(cycle, module)                    \
     (cycle->conf_ctx[ngx_http_module.index] ?                                 \
         ((ngx_http_conf_ctx_t *) cycle->conf_ctx[ngx_http_module.index])      \

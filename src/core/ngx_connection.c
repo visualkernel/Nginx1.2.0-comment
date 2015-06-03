@@ -751,7 +751,12 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     }
 }
 
-
+/**
+ * @brief 从ngx_cycle空闲连接池中获取可用连接对象
+ * @param s 文件描述符
+ * @param log 日志对象
+ * @return 连接对象
+ */
 ngx_connection_t *
 ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 {
@@ -771,7 +776,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 
     /* ngx_mutex_lock */
 
-    c = ngx_cycle->free_connections;
+    c = ngx_cycle->free_connections;//获取空闲连接对象
 
     if (c == NULL) {
         ngx_drain_connections();
@@ -788,7 +793,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
         return NULL;
     }
 
-    ngx_cycle->free_connections = c->data;
+    ngx_cycle->free_connections = c->data;/*下一次获取的可用连接对象*/
     ngx_cycle->free_connection_n--;
 
     /* ngx_mutex_unlock */
@@ -812,8 +817,8 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
 
-    rev->instance = !instance;
-    wev->instance = !instance;
+    rev->instance = !instance;/*反转上一次使用的instance的值，用于判断事件是否过期*/
+    wev->instance = !instance;/*如果instance与存放在事件机制中的不同，表示事件已经过期*/
 
     rev->index = NGX_INVALID_INDEX;
     wev->index = NGX_INVALID_INDEX;
@@ -826,12 +831,15 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     return c;
 }
 
-
+/**
+ * @brief 回收连接对象
+ * @param c 连接对象
+ */
 void
 ngx_free_connection(ngx_connection_t *c)
 {
     /* ngx_mutex_lock */
-
+	//把data当作next指针，将释放的连接对象c放在链表的头部
     c->data = ngx_cycle->free_connections;
     ngx_cycle->free_connections = c;
     ngx_cycle->free_connection_n++;

@@ -43,7 +43,7 @@ struct ngx_event_s {
     unsigned         accept:1;//事件可建立连接
 
     /* used to detect the stale events in kqueue, rtsig, and epoll */
-    unsigned         instance:1;//用于检测事件是否过期
+    unsigned         instance:1;//用于检测事件是否过期，如果该值发生变化，表示事件过期
 
     /*
      * the event was passed or would be passed to a kernel;
@@ -163,7 +163,7 @@ struct ngx_event_s {
 
 #endif
 
-    /* the links of the posted queue */
+    /* the links of the posted queue 构成一个双向链表*/
     ngx_event_t     *next;
     ngx_event_t    **prev;
 
@@ -247,6 +247,7 @@ typedef struct {
                    ngx_uint_t flags);
 	//初始化
     ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
+	//退出事件模块时调用
     void       (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
 
@@ -480,7 +481,7 @@ typedef struct {
     ngx_uint_t    connections;//每个worker进程的最大连接数，worker_connections配置项
     ngx_uint_t    use;//使用的事件模型，usr配置项，参数有epoll,select,poll,/dev/poll,kqueue,rtsig,eventport
 
-    ngx_flag_t    multi_accept;//一个Worker进程每次只能接收一个新连接，multi_accept配置项
+    ngx_flag_t    multi_accept;//worker进程接收尽可能多的新连接，multi_accept配置项
     ngx_flag_t    accept_mutex;//实现负载均衡，实现轮流处理连接。accept_mutex配置项
 
     ngx_msec_t    accept_mutex_delay;//在获取accept锁失败后，worker进程从新开始接收新连接的最大间隔时间。

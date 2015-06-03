@@ -29,7 +29,7 @@ static ngx_conf_enum_t  ngx_debug_points[] = {
     { ngx_null_string, 0 }
 };
 
-//最外层main的指令集
+//最外层的指令集（核心指令，配置项名称）
 static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("daemon"),
@@ -305,11 +305,13 @@ main(int argc, char *const *argv)
         return 1;
     }
 	
-	//初始化init_cycle对象的字段
+	//用保存在全局变量中命令行参数值来初始化init_cycle对象的字段
     if (ngx_process_options(&init_cycle) != NGX_OK) {
         return 1;
     }
-	//初始化与操作系统相关的信息
+	/*初始化与操作系统相关的参数
+	 * 如：页大小、cpu信息、内核限制参数等
+	 */
     if (ngx_os_init(log) != NGX_OK) {
         return 1;
     }
@@ -406,7 +408,7 @@ main(int argc, char *const *argv)
     }
 
 #endif
-	//创建pid文件
+	//将ngx_pid写入pid文件中
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
@@ -440,6 +442,7 @@ main(int argc, char *const *argv)
 }
 
 //平滑升级，需要继承旧版nginx的socket
+//旧的nginx通过“NGINX”环境变量来传递需要打开的监听端口
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
@@ -492,7 +495,12 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
     return ngx_set_inherited_sockets(cycle);
 }
 
-
+/**
+ * @brief 根据配置文件ccf->env配置项来设置环境变量 
+ * @param cycle
+ * @param last
+ * @return 
+ */
 char **
 ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
 {
@@ -503,12 +511,13 @@ ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+	/*如果已经设置，则直接返回*/
     if (last == NULL && ccf->environment) {
         return ccf->environment;
     }
 
     var = ccf->env.elts;
-
+	/*查找time zone的环境变量TZ，如果不存在，则添加*/
     for (i = 0; i < ccf->env.nelts; i++) {
         if (ngx_strcmp(var[i].data, "TZ") == 0
             || ngx_strncmp(var[i].data, "TZ=", 3) == 0)
@@ -532,12 +541,13 @@ tz_found:
     n = 0;
 
     for (i = 0; i < ccf->env.nelts; i++) {
-
+		/*如果环境变量以=结尾，则计数*/
         if (var[i].data[var[i].len] == '=') {
             n++;
             continue;
         }
-
+		
+		/*其它情况下则与os环境变量匹配，如果变量名匹配，则计数*/
         for (p = ngx_os_environ; *p; p++) {
 
             if (ngx_strncmp(*p, var[i].data, var[i].len) == 0
@@ -692,7 +702,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     return pid;
 }
 
-
+/*解析命令行参数，将数据存放在全局变量中*/
 static ngx_int_t
 ngx_get_options(int argc, char *const *argv)
 {
@@ -852,12 +862,12 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 
 #endif
 
-    ngx_os_environ = environ;
+    ngx_os_environ = environ;/*操作系统环境变量*/
 
     return NGX_OK;
 }
 
-
+/*将配置文件路径、运行参照根据目录、配置参数等设置到cycle成员中*/
 static ngx_int_t
 ngx_process_options(ngx_cycle_t *cycle)
 {

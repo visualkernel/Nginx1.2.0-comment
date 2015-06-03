@@ -23,12 +23,12 @@
 static ngx_uint_t        slot;
 static ngx_atomic_t      ngx_time_lock;
 
-volatile ngx_msec_t      ngx_current_msec;
-volatile ngx_time_t     *ngx_cached_time;
-volatile ngx_str_t       ngx_cached_err_log_time;
-volatile ngx_str_t       ngx_cached_http_time;
-volatile ngx_str_t       ngx_cached_http_log_time;
-volatile ngx_str_t       ngx_cached_http_log_iso8601;
+volatile ngx_msec_t      ngx_current_msec;//从1970.1.1 0:0:0到当前时间的毫秒数
+volatile ngx_time_t     *ngx_cached_time;//当前时间的ngx_time_t形式
+volatile ngx_str_t       ngx_cached_err_log_time;//用于记录error_log的当前时间字符串
+volatile ngx_str_t       ngx_cached_http_time;//与HTTP相关的当前时间字符串
+volatile ngx_str_t       ngx_cached_http_log_time;//与HTTP日志相关的当前时间字符串
+volatile ngx_str_t       ngx_cached_http_log_iso8601;//以iso8601标准格式形记录的当前时间
 
 #if !(NGX_WIN32)
 
@@ -52,10 +52,12 @@ static u_char            cached_http_log_iso8601[NGX_TIME_SLOTS]
                                     [sizeof("1970-09-28T12:00:00+06:00")];
 
 
-static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };//星期
+static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",//月份
                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
+/**
+ * @brief 初始化所有全局时间变量
+ */
 void
 ngx_time_init(void)
 {
@@ -65,11 +67,13 @@ ngx_time_init(void)
     ngx_cached_http_log_iso8601.len = sizeof("1970-09-28T12:00:00+06:00") - 1;
 
     ngx_cached_time = &cached_time[0];
-
+	//调用gettimeofday得到当前时间
     ngx_time_update();
 }
 
-
+/**
+ * @brief 调用gettimeofday得到当前时间，更新全局时间变量
+ */
 void
 ngx_time_update(void)
 {
@@ -84,7 +88,7 @@ ngx_time_update(void)
         return;
     }
 
-    ngx_gettimeofday(&tv);
+    ngx_gettimeofday(&tv);//得到当前时间（gettimeofday）
 
     sec = tv.tv_sec;
     msec = tv.tv_usec / 1000;
@@ -229,7 +233,12 @@ ngx_time_sigsafe_update(void)
 
 #endif
 
-
+/**
+ * @brief 将时间t转换成HTTP时间指定格式的字符串，存放在buf中
+ * @param buf
+ * @param t 从1970.1.1 0:0:0到当前时间的秒数
+ * @return 
+ */
 u_char *
 ngx_http_time(u_char *buf, time_t t)
 {
@@ -247,7 +256,12 @@ ngx_http_time(u_char *buf, time_t t)
                        tm.ngx_tm_sec);
 }
 
-
+/**
+ * @brief 将时间t转换成HTTP cookie时间指定格式的字符串，存放在buf中
+ * @param buf
+ * @param t 从1970.1.1 0:0:0到当前时间的秒数
+ * @return 
+ */
 u_char *
 ngx_http_cookie_time(u_char *buf, time_t t)
 {
@@ -274,7 +288,11 @@ ngx_http_cookie_time(u_char *buf, time_t t)
                        tm.ngx_tm_sec);
 }
 
-
+/**
+ * @brief 将时间t转换成ngx_tm_t类型的时间
+ * @param t 从1970.1.1 0:0:0到当前时间的秒数
+ * @param tp
+ */
 void
 ngx_gmtime(time_t t, ngx_tm_t *tp)
 {

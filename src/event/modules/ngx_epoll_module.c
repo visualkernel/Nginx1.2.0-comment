@@ -110,9 +110,9 @@ static void ngx_epoll_eventfd_handler(ngx_event_t *ev);
 static void *ngx_epoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf);
 
-static int                  ep = -1;
-static struct epoll_event  *event_list;
-static ngx_uint_t           nevents;
+static int                  ep = -1; //epoll描述符
+static struct epoll_event  *event_list;//epoll_wait函数的接收事件的参数
+static ngx_uint_t           nevents;//最大接收事件数量
 
 #if (NGX_HAVE_FILE_AIO)
 
@@ -284,7 +284,7 @@ failed:
 
 #endif
 
-
+//初始化
 static ngx_int_t
 ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
@@ -293,7 +293,7 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
     epcf = ngx_event_get_conf(cycle->conf_ctx, ngx_epoll_module);
 
     if (ep == -1) {
-        ep = epoll_create(cycle->connection_n / 2);
+        ep = epoll_create(cycle->connection_n / 2);//创建epoll描述符
 
         if (ep == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -312,22 +312,22 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         if (event_list) {
             ngx_free(event_list);
         }
-
+		//初始化event_list数组
         event_list = ngx_alloc(sizeof(struct epoll_event) * epcf->events,
                                cycle->log);
         if (event_list == NULL) {
             return NGX_ERROR;
         }
     }
-
+	//epoll_wait可接收事件的最大数量
     nevents = epcf->events;
 
     ngx_io = ngx_os_io;
-	//初始化全局的事件操作对象，包含了处理各种事件的核心函数
+	//初始化全局的事件操作对象(封装接口)，包含了处理各种事件的核心函数
     ngx_event_actions = ngx_epoll_module_ctx.actions;
 
 #if (NGX_HAVE_CLEAR_EVENT)
-    ngx_event_flags = NGX_USE_CLEAR_EVENT
+    ngx_event_flags = NGX_USE_CLEAR_EVENT//相当于告诉NGINX采用ET模式
 #else
     ngx_event_flags = NGX_USE_LEVEL_EVENT
 #endif
@@ -375,7 +375,13 @@ ngx_epoll_done(ngx_cycle_t *cycle)
     nevents = 0;
 }
 
-
+/**
+ * @brief 添加读或写事件到事件驱动机制中
+ * @param ev 事件
+ * @param event 标识是读事件还是写事件，取值为NGX_READ_EVENT或NGX_WRITE_EVENT
+ * @param flags 事件的附加标志
+ * @return NGX_ERROR或NGX_OK
+ */
 static ngx_int_t
 ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
@@ -385,25 +391,27 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     ngx_connection_t    *c;
     struct epoll_event   ee;
 
-    c = ev->data;
+    c = ev->data;/*该事件关联的ngx_connection_t*/
 
     events = (uint32_t) event;
 
-    if (event == NGX_READ_EVENT) {
+    if (event == NGX_READ_EVENT) {//读事件
         e = c->write;
         prev = EPOLLOUT;
 #if (NGX_READ_EVENT != EPOLLIN)
-        events = EPOLLIN;
+        events = EPOLLIN;/*读*/
 #endif
 
-    } else {
+    } else {//写事件
         e = c->read;
         prev = EPOLLIN;
 #if (NGX_WRITE_EVENT != EPOLLOUT)
-        events = EPOLLOUT;
+        events = EPOLLOUT;/*写*/
 #endif
     }
-
+	/*e->active为1表示该事件已经添加到了事件机制中*/
+	/*如果添加的是读事件，则需要先判断其写事件是否已在事件机制中，如果在则修改*/
+	/*如果添加的是写事件，则需要先判断其读事件是否已在事件机制中，如果在则修改*/
     if (e->active) {
         op = EPOLL_CTL_MOD;
         events |= prev;
@@ -424,7 +432,7 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
                       "epoll_ctl(%d, %d) failed", op, c->fd);
         return NGX_ERROR;
     }
-
+	//将事件设置为活跃
     ev->active = 1;
 #if 0
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
@@ -433,7 +441,7 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     return NGX_OK;
 }
 
-
+//删除事件
 static ngx_int_t
 ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
@@ -485,13 +493,17 @@ ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
                       "epoll_ctl(%d, %d) failed", op, c->fd);
         return NGX_ERROR;
     }
-
+	/*将事件设置为非活跃*/
     ev->active = 0;
 
     return NGX_OK;
 }
 
-
+/**
+ * @brief 直接添加连接对象的读写事件到事件机制中
+ * @param c 连接对象
+ * @return 
+ */
 static ngx_int_t
 ngx_epoll_add_connection(ngx_connection_t *c)
 {
@@ -508,14 +520,19 @@ ngx_epoll_add_connection(ngx_connection_t *c)
                       "epoll_ctl(EPOLL_CTL_ADD, %d) failed", c->fd);
         return NGX_ERROR;
     }
-
+	/*同时将读写事件设置活跃*/
     c->read->active = 1;
     c->write->active = 1;
 
     return NGX_OK;
 }
 
-
+/**
+ * @brief 将连接的读写事件从事件机制中删除
+ * @param c
+ * @param flags
+ * @return 
+ */
 static ngx_int_t
 ngx_epoll_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 {
@@ -554,8 +571,13 @@ ngx_epoll_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 }
 
 
-/* timer: 超时时间间隔，单位毫秒*/
-/* 等待并处理事件 */
+/**
+ * @brief 收集、处理事件
+ * @param cycle 服务器的生命周期
+ * @param timer 超时时间间隔，单位毫秒
+ * @param flags
+ * @return 
+ */
 static ngx_int_t
 ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
@@ -571,15 +593,15 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "epoll timer: %M", timer);
-	/* 等待事件 */
+	/* 等待和获取事件 */
     events = epoll_wait(ep, event_list, (int) nevents, timer);
 
     err = (events == -1) ? ngx_errno : 0;
-
+	/*更新缓存时间*/
     if (flags & NGX_UPDATE_TIME || ngx_event_timer_alarm) {
         ngx_time_update();
     }
-
+	/*获取事件时出错*/
     if (err) {
         if (err == NGX_EINTR) {
 
@@ -597,7 +619,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         ngx_log_error(level, cycle->log, err, "epoll_wait() failed");
         return NGX_ERROR;
     }
-
+	/*超时，没有任何事件发生*/
     if (events == 0) {
         if (timer != NGX_TIMER_INFINITE) {
             return NGX_OK;
@@ -609,15 +631,15 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     }
 
     ngx_mutex_lock(ngx_posted_events_mutex);
-
+	//遍历epoll_Wait返回的所有事件
     for (i = 0; i < events; i++) {
         c = event_list[i].data.ptr;
 
         instance = (uintptr_t) c & 1;
-        c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);
-
+        c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);//屏蔽最后一bit（instance）
+		//读事件
         rev = c->read;
-
+		//判断事件是否过期
         if (c->fd == -1 || rev->instance != instance) {
 
             /*
@@ -629,7 +651,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                            "epoll: stale event %p", c);
             continue;
         }
-
+		//取出事件类型
         revents = event_list[i].events;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -661,7 +683,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
             revents |= EPOLLIN|EPOLLOUT;
         }
-		//读事件
+		//读事件且该事件活跃
         if ((revents & EPOLLIN) && rev->active) {
 
             if ((flags & NGX_POST_THREAD_EVENTS) && !rev->accept) {
@@ -670,22 +692,23 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             } else {
                 rev->ready = 1;
             }
-
+			//NGX_POST_EVENTS表示该事件延后处理
             if (flags & NGX_POST_EVENTS) {
+				//判断事件是新连接事件还是普通事件，以决定将其加入不同的队列中
                 queue = (ngx_event_t **) (rev->accept ?
                                &ngx_posted_accept_events : &ngx_posted_events);
-
+				//将事件rev加入队列queue首部
                 ngx_locked_post_event(rev, queue);
 
-            } else {
+            } else {//立即处理
                 rev->handler(rev);//调用事件处理函数
             }
         }
-
-        wev = c->write;
 		//写事件
+        wev = c->write;
+		//写事件且该事件活跃
         if ((revents & EPOLLOUT) && wev->active) {
-
+			//如果事件过期，则不做处理
             if (c->fd == -1 || wev->instance != instance) {
 
                 /*
@@ -704,11 +727,12 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             } else {
                 wev->ready = 1;
             }
-
+			//延后处理
             if (flags & NGX_POST_EVENTS) {
+				//将事件wev加入队列ngx_posted_events首部
                 ngx_locked_post_event(wev, &ngx_posted_events);
 
-            } else {
+            } else {//立即处理
                 wev->handler(wev);
             }
         }

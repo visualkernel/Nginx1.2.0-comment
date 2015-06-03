@@ -17,7 +17,10 @@ ngx_thread_volatile ngx_event_t  *ngx_posted_events;
 ngx_mutex_t                      *ngx_posted_events_mutex;
 #endif
 
-
+/**
+ * @brief 调用队列中所有事件的handler回调方法，并将其从队列中移除
+ * @param cycle
+ */
 void
 ngx_event_process_posted(ngx_cycle_t *cycle,
     ngx_thread_volatile ngx_event_t **posted)
@@ -35,9 +38,9 @@ ngx_event_process_posted(ngx_cycle_t *cycle,
             return;
         }
 
-        ngx_delete_posted_event(ev);
+        ngx_delete_posted_event(ev);//将事件从队列移除
 
-        ev->handler(ev);
+        ev->handler(ev);//处理事件
     }
 }
 

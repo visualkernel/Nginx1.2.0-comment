@@ -81,7 +81,7 @@ ngx_str_t  ngx_http_html_default_types[] = {
 
 static ngx_command_t  ngx_http_commands[] = {
 
-    { ngx_string("http"),
+    { ngx_string("http"),//http{}块指令
       NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
       ngx_http_block,
       0,
@@ -93,7 +93,7 @@ static ngx_command_t  ngx_http_commands[] = {
 
 
 static ngx_core_module_t  ngx_http_module_ctx = {
-ngx_string("http"),//http{}块指令
+ngx_string("http"),
     NULL,
     NULL
 };
@@ -570,16 +570,16 @@ ngx_http_merge_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     ngx_http_core_srv_conf_t   **cscfp;
 
     cscfp = cmcf->servers.elts;
-    ctx = (ngx_http_conf_ctx_t *) cf->ctx;
+	ctx = (ngx_http_conf_ctx_t *) cf->ctx;//http{}的ngx_http_conf_ctx_t
     saved = *ctx;
     rv = NGX_CONF_OK;
-
+	//遍历所有的server{}配置
     for (s = 0; s < cmcf->servers.nelts; s++) {
 
         /* merge the server{}s' srv_conf's */
 
-        ctx->srv_conf = cscfp[s]->ctx->srv_conf;
-
+		ctx->srv_conf = cscfp[s]->ctx->srv_conf;//server{}的srv_conf
+		//调用模块module的merge_srv_conf方法
         if (module->merge_srv_conf) {
             rv = module->merge_srv_conf(cf, saved.srv_conf[ctx_index],
                                         cscfp[s]->ctx->srv_conf[ctx_index]);
@@ -587,7 +587,7 @@ ngx_http_merge_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
                 goto failed;
             }
         }
-
+		//调用模块module的merge_loc_conf方法
         if (module->merge_loc_conf) {
 
             /* merge the server{}'s loc_conf */
@@ -637,7 +637,7 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
 
     ctx = (ngx_http_conf_ctx_t *) cf->ctx;
     saved = *ctx;
-
+	//遍历locations队列
     for (q = ngx_queue_head(locations);
          q != ngx_queue_sentinel(locations);
          q = ngx_queue_next(q))
@@ -646,7 +646,7 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
 
         clcf = lq->exact ? lq->exact : lq->inclusive;
         ctx->loc_conf = clcf->loc_conf;
-
+		//将http{}下的location和server{}下的location合并
         rv = module->merge_loc_conf(cf, loc_conf[ctx_index],
                                     clcf->loc_conf[ctx_index]);
         if (rv != NGX_CONF_OK) {

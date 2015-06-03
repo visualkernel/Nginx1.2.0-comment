@@ -407,7 +407,7 @@ ngx_close_glob(ngx_glob_t *gl)
     globfree(&gl->pglob);
 }
 
-
+//尝试获取锁
 ngx_err_t
 ngx_trylock_fd(ngx_fd_t fd)
 {
@@ -419,14 +419,14 @@ ngx_trylock_fd(ngx_fd_t fd)
     fl.l_type = F_WRLCK;
     fl.l_whence = SEEK_SET;
 
-    if (fcntl(fd, F_SETLK, &fl) == -1) {
+    if (fcntl(fd, F_SETLK, &fl) == -1) {//F_SETLK非阻塞写锁
         return ngx_errno;
     }
 
     return 0;
 }
 
-
+//获取锁，一直等待直到获取锁
 ngx_err_t
 ngx_lock_fd(ngx_fd_t fd)
 {
@@ -438,14 +438,14 @@ ngx_lock_fd(ngx_fd_t fd)
     fl.l_type = F_WRLCK;
     fl.l_whence = SEEK_SET;
 
-    if (fcntl(fd, F_SETLKW, &fl) == -1) {
+    if (fcntl(fd, F_SETLKW, &fl) == -1) {//F_SETLKW阻塞写锁
         return ngx_errno;
     }
 
     return 0;
 }
 
-
+//释放锁
 ngx_err_t
 ngx_unlock_fd(ngx_fd_t fd)
 {
@@ -454,7 +454,7 @@ ngx_unlock_fd(ngx_fd_t fd)
     fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
-    fl.l_type = F_UNLCK;
+    fl.l_type = F_UNLCK;//释放锁
     fl.l_whence = SEEK_SET;
 
     if (fcntl(fd, F_SETLK, &fl) == -1) {

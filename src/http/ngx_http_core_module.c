@@ -291,7 +291,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, underscores_in_headers),
       NULL },
 
-    { ngx_string("location"),
+    { ngx_string("location"),//location{}
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
       ngx_http_core_location,
       NGX_HTTP_SRV_CONF_OFFSET,
@@ -2697,7 +2697,13 @@ ngx_http_set_disable_symlinks(ngx_http_request_t *r,
     return NGX_OK;
 }
 
-
+/**
+ * @brief 解析遇到server{}的配置时，回调此函数
+ * @param cf 
+ * @param cmd
+ * @param dummy
+ * @return 
+ */
 static char *
 ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
@@ -2733,7 +2739,7 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     if (ctx->loc_conf == NULL) {
         return NGX_CONF_ERROR;
     }
-
+	//执行每个HTTP模块的create_srv_conf和create_loc_conf方法
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_HTTP_MODULE) {
             continue;
@@ -2768,7 +2774,7 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
 
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
-
+	//将cscf(ngx_http_core_srv_conf_t) server对象放置到cmcf->servers数组中
     cscfp = ngx_array_push(&cmcf->servers);
     if (cscfp == NULL) {
         return NGX_CONF_ERROR;
@@ -2782,11 +2788,11 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     pcf = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_SRV_CONF;
-
+	//解析server{}块内srv级别的配置项
     rv = ngx_conf_parse(cf, NULL);
 
     *cf = pcf;
-
+	//如果没有listen配置，则设置默认监听80端口(当前进程用户不非root则设置8000端口)
     if (rv == NGX_CONF_OK && !cscf->listen) {
         ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
@@ -2821,7 +2827,13 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     return rv;
 }
 
-
+/**
+ * @brief 解析遇到location{}的配置时，回调此函数
+ * @param cf
+ * @param cmd
+ * @param dummy
+ * @return 
+ */
 static char *
 ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
@@ -2840,15 +2852,15 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return NGX_CONF_ERROR;
     }
 
-    pctx = cf->ctx;
+	pctx = cf->ctx;//location所属server{}的配置上下文
     ctx->main_conf = pctx->main_conf;
     ctx->srv_conf = pctx->srv_conf;
-
+	//构建loc_conf配置指针数组
     ctx->loc_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module);
     if (ctx->loc_conf == NULL) {
         return NGX_CONF_ERROR;
     }
-
+	//执行每个HTTP模块的create_loc_conf方法
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_HTTP_MODULE) {
             continue;
@@ -2865,34 +2877,34 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         }
     }
 
-    clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];
+    clcf = ctx->loc_conf[ngx_http_core_module.ctx_index];//ngx_http_core_loc_conf_t
     clcf->loc_conf = ctx->loc_conf;
-
+	
     value = cf->args->elts;
-
+	//解析location的配置参数
     if (cf->args->nelts == 3) {
 
         len = value[1].len;
         mod = value[1].data;
         name = &value[2];
 
-        if (len == 1 && mod[0] == '=') {
+        if (len == 1 && mod[0] == '=') {//"location ="精确匹配
 
             clcf->name = *name;
             clcf->exact_match = 1;
 
-        } else if (len == 2 && mod[0] == '^' && mod[1] == '~') {
+        } else if (len == 2 && mod[0] == '^' && mod[1] == '~') {//"location ^~"只需要前缀匹配
 
             clcf->name = *name;
             clcf->noregex = 1;
 
-        } else if (len == 1 && mod[0] == '~') {
+        } else if (len == 1 && mod[0] == '~') {//location ~ 大小字母敏感
 
             if (ngx_http_core_regex_location(cf, clcf, name, 0) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }
 
-        } else if (len == 2 && mod[0] == '~' && mod[1] == '*') {
+        } else if (len == 2 && mod[0] == '~' && mod[1] == '*') {//location ~* 大小字母不敏感
 
             if (ngx_http_core_regex_location(cf, clcf, name, 1) != NGX_OK) {
                 return NGX_CONF_ERROR;
@@ -2999,7 +3011,7 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             return NGX_CONF_ERROR;
         }
     }
-
+	//将当前location配置对象添加到server{}块的locations队列中
     if (ngx_http_add_location(cf, &pclcf->locations, clcf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -3007,7 +3019,7 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     save = *cf;
     cf->ctx = ctx;
     cf->cmd_type = NGX_HTTP_LOC_CONF;
-
+	//解析location{}块内部的配置项
     rv = ngx_conf_parse(cf, NULL);
 
     *cf = save;

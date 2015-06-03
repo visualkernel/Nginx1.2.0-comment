@@ -14,11 +14,11 @@
 
 static void ngx_shmtx_wakeup(ngx_shmtx_t *mtx);
 
-
+//基于原子锁实现的互斥锁
 ngx_int_t
 ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
 {
-    mtx->lock = &addr->lock;
+    mtx->lock = &addr->lock;//原子变量锁
 
     if (mtx->spin == (ngx_uint_t) -1) {
         return NGX_OK;
@@ -29,7 +29,7 @@ ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
 #if (NGX_HAVE_POSIX_SEM)
 
     mtx->wait = &addr->wait;
-
+	//信号量
     if (sem_init(&mtx->sem, 1, 0) == -1) {
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_errno,
                       "sem_init() failed");
@@ -196,8 +196,14 @@ ngx_shmtx_wakeup(ngx_shmtx_t *mtx)
 
 
 #else
-
-
+//基于文件锁实现的互斥锁
+/**
+ * @brief 创建互斥锁
+ * @param mtx 互斥锁
+ * @param addr
+ * @param name 文件路径
+ * @return 
+ */
 ngx_int_t
 ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
 {

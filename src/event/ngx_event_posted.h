@@ -18,7 +18,7 @@
 extern ngx_mutex_t  *ngx_posted_events_mutex;
 #endif
 
-
+//将事件ev加入队列post事件queue首部
 #define ngx_locked_post_event(ev, queue)                                      \
                                                                               \
     if (ev->prev == NULL) {                                                   \
@@ -37,14 +37,14 @@ extern ngx_mutex_t  *ngx_posted_events_mutex;
                        "update posted event %p", ev);                         \
     }
 
-
+//线路安全
 #define ngx_post_event(ev, queue)                                             \
                                                                               \
     ngx_mutex_lock(ngx_posted_events_mutex);                                  \
     ngx_locked_post_event(ev, queue);                                         \
     ngx_mutex_unlock(ngx_posted_events_mutex);
 
-
+//将事件ev从队列中删除
 #define ngx_delete_posted_event(ev)                                           \
                                                                               \
     *(ev->prev) = ev->next;                                                   \

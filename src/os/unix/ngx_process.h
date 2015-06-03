@@ -28,7 +28,7 @@ typedef struct {
     void               *data;
     char               *name;//进程名称
 
-    unsigned            respawn:1;//重新生成
+    unsigned            respawn:1;//如果进程退出，是否重新生成
     unsigned            just_spawn:1;//正在生成
     unsigned            detached:1;//进程独立
     unsigned            exiting:1;//将要退出

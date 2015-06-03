@@ -8,7 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+/*在hash表中查找键为name的value*/
 void *
 ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
 {
@@ -18,13 +18,13 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
 #if 0
     ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "hf:\"%*s\"", len, name);
 #endif
-
+	/*根据key找到对应的buckets的元素的首地址*/
     elt = hash->buckets[key % hash->size];
 
     if (elt == NULL) {
         return NULL;
     }
-
+	/*elt->value为NULL时，已经到了哨兵元素，表示后面没有元素了*/
     while (elt->value) {
         if (len != (size_t) elt->len) {
             goto next;
@@ -39,7 +39,7 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
         return elt->value;
 
     next:
-
+		/*下一个元素*/
         elt = (ngx_hash_elt_t *) ngx_align_ptr(&elt->name[0] + elt->len,
                                                sizeof(void *));
         continue;
@@ -48,7 +48,7 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
     return NULL;
 }
 
-
+/*通配符前缀查找*/
 void *
 ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 {
@@ -142,7 +142,7 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
     return hwc->value;
 }
 
-
+/*通配符后缀查找*/
 void *
 ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 {
@@ -212,7 +212,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     size_t len)
 {
     void  *value;
-
+	/*精确查找*/
     if (hash->hash.buckets) {
         value = ngx_hash_find(&hash->hash, key, name, len);
 
@@ -224,7 +224,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     if (len == 0) {
         return NULL;
     }
-
+	/*前缀查找*/
     if (hash->wc_head && hash->wc_head->hash.buckets) {
         value = ngx_hash_find_wc_head(hash->wc_head, name, len);
 
@@ -232,7 +232,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
             return value;
         }
     }
-
+	/*后缀查找*/
     if (hash->wc_tail && hash->wc_tail->hash.buckets) {
         value = ngx_hash_find_wc_tail(hash->wc_tail, name, len);
 
@@ -244,7 +244,7 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     return NULL;
 }
 
-//单个元素的大小
+/*单个元素的大小(字节对齐),最小值为2*sizeof(void *)*/
 #define NGX_HASH_ELT_SIZE(name)                                               \
     (sizeof(void *) + ngx_align((name)->key.len + 2, sizeof(void *)))
 
@@ -283,22 +283,24 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
 	//一个bucket最多可以存放bucket_size / (2 * sizeof(void *))个元素
     start = nelts / (bucket_size / (2 * sizeof(void *)));
     start = start ? start : 1;
-
+	
+	/*如果元素过多，则直接设置start值*/
     if (hinit->max_size > 10000 && nelts && hinit->max_size / nelts < 100) {
         start = hinit->max_size - 1000;
     }
-
+	/*计算最合理的桶的个数*/
     for (size = start; size < hinit->max_size; size++) {
 
         ngx_memzero(test, size * sizeof(u_short));
 
-		//计算在size上映射到各个hash值的元素大小字节总数
+		//计算当使用size个桶时，映射到各个hash值的元素总字节大小
         for (n = 0; n < nelts; n++) {
             if (names[n].key.data == NULL) {/* 没有key */
                 continue;
             }
 
             key = names[n].key_hash % size;//key为hash值
+			/*test[key]表示映射到key上的所有元素的字节数*/
             test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
 
 #if 0
@@ -312,7 +314,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
             }
         }
 
-        goto found;
+        goto found;/*找到合适的桶大小*/
 
     next:
 
@@ -330,11 +332,10 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
     return NGX_ERROR;
 
 found:
-
     for (i = 0; i < size; i++) {
-        test[i] = sizeof(void *);
+        test[i] = sizeof(void *);/*初始大小（至少一个哨兵NULL的大小）*/
     }
-
+	/*计算映射到同一个桶上的所有元素的总字节大小*/
     for (n = 0; n < nelts; n++) {
         if (names[n].key.data == NULL) {
             continue;
@@ -345,7 +346,7 @@ found:
     }
 
     len = 0;
-
+	/*对每个桶中元素总大小进行字节对齐修正*/
     for (i = 0; i < size; i++) {
         if (test[i] == sizeof(void *)) {
             continue;
@@ -356,8 +357,9 @@ found:
         len += test[i];
     }
 
+	/*为桶分配内存空间*/
     if (hinit->hash == NULL) {
-        hinit->hash = ngx_pcalloc(hinit->pool, sizeof(ngx_hash_wildcard_t)
+        hinit->hash = ngx_pcalloc(hinit->pool, sizeof(ngx_hash_wildcard_t)//?
                                              + size * sizeof(ngx_hash_elt_t *));
         if (hinit->hash == NULL) {
             ngx_free(test);
@@ -374,7 +376,7 @@ found:
             return NGX_ERROR;
         }
     }
-
+	/*len是总元素大小*/
     elts = ngx_palloc(hinit->pool, len + ngx_cacheline_size);
     if (elts == NULL) {
         ngx_free(test);
@@ -382,7 +384,7 @@ found:
     }
 
     elts = ngx_align_ptr(elts, ngx_cacheline_size);
-
+	/*设置每个桶的元素存储的起始地址*/
     for (i = 0; i < size; i++) {
         if (test[i] == sizeof(void *)) {
             continue;
@@ -396,7 +398,7 @@ found:
     for (i = 0; i < size; i++) {
         test[i] = 0;
     }
-
+	/*使用names来初始化桶中的每个元素的key-value*/
     for (n = 0; n < nelts; n++) {
         if (names[n].key.data == NULL) {
             continue;
@@ -412,7 +414,7 @@ found:
 
         test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
     }
-
+	/*设置哨兵*/
     for (i = 0; i < size; i++) {
         if (buckets[i] == NULL) {
             continue;
@@ -420,7 +422,7 @@ found:
 
         elt = (ngx_hash_elt_t *) ((u_char *) buckets[i] + test[i]);
 
-        elt->value = NULL;
+        elt->value = NULL;/*哨兵*/
     }
 
     ngx_free(test);
@@ -495,14 +497,14 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 #endif
 
         dot = 0;
-
+		/*查找第一个点*/
         for (len = 0; len < names[n].key.len; len++) {
             if (names[n].key.data[len] == '.') {
                 dot = 1;
                 break;
             }
         }
-
+		/*将当前键名(到第一个点为止)存放到curr_names数组中*/
         name = ngx_array_push(&curr_names);
         if (name == NULL) {
             return NGX_ERROR;
@@ -527,12 +529,13 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
         next_names.nelts = 0;
 
         if (names[n].key.len != len) {
+			/*将键名的剩余部分保存到next_names数组中*/
             next_name = ngx_array_push(&next_names);
             if (next_name == NULL) {
                 return NGX_ERROR;
             }
 
-            next_name->key.len = names[n].key.len - len;
+            next_name->key.len = names[n].key.len - len;/*剩余长度*/
             next_name->key.data = names[n].key.data + len;
             next_name->key_hash = 0;
             next_name->value = names[n].value;
@@ -575,7 +578,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 
             h = *hinit;
             h.hash = NULL;
-
+			/*递归处理剩余的部分*/
             if (ngx_hash_wildcard_init(&h, (ngx_hash_key_t *) next_names.elts,
                                        next_names.nelts)
                 != NGX_OK)
@@ -606,7 +609,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
     return NGX_OK;
 }
 
-
+/*hash 函数*/
 ngx_uint_t
 ngx_hash_key(u_char *data, size_t len)
 {
@@ -621,7 +624,7 @@ ngx_hash_key(u_char *data, size_t len)
     return key;
 }
 
-
+/*hash函数-转换成小写*/
 ngx_uint_t
 ngx_hash_key_lc(u_char *data, size_t len)
 {
@@ -636,7 +639,7 @@ ngx_hash_key_lc(u_char *data, size_t len)
     return key;
 }
 
-
+/*hash函数-转换成小写后字符串放置到dst中*/
 ngx_uint_t
 ngx_hash_strlow(u_char *dst, u_char *src, size_t n)
 {
@@ -659,47 +662,47 @@ ngx_int_t
 ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type)
 {
     ngx_uint_t  asize;
-
+	/*元素较少*/
     if (type == NGX_HASH_SMALL) {
         asize = 4;
         ha->hsize = 107;
 
-    } else {
+    } else {/*元素较多*/
         asize = NGX_HASH_LARGE_ASIZE;
         ha->hsize = NGX_HASH_LARGE_HSIZE;
     }
-
+	/*keys*/
     if (ngx_array_init(&ha->keys, ha->temp_pool, asize, sizeof(ngx_hash_key_t))
         != NGX_OK)
     {
         return NGX_ERROR;
     }
-
+	/*dns_wc_head*/
     if (ngx_array_init(&ha->dns_wc_head, ha->temp_pool, asize,
                        sizeof(ngx_hash_key_t))
         != NGX_OK)
     {
         return NGX_ERROR;
     }
-
+	/*dns_wc_tail*/
     if (ngx_array_init(&ha->dns_wc_tail, ha->temp_pool, asize,
                        sizeof(ngx_hash_key_t))
         != NGX_OK)
     {
         return NGX_ERROR;
     }
-
+	/*key_hash*/
     ha->keys_hash = ngx_pcalloc(ha->temp_pool, sizeof(ngx_array_t) * ha->hsize);
     if (ha->keys_hash == NULL) {
         return NGX_ERROR;
     }
-
+	/*dns_wc_head_hash*/
     ha->dns_wc_head_hash = ngx_pcalloc(ha->temp_pool,
                                        sizeof(ngx_array_t) * ha->hsize);
     if (ha->dns_wc_head_hash == NULL) {
         return NGX_ERROR;
     }
-
+	/*dns_wc_tail_hash*/
     ha->dns_wc_tail_hash = ngx_pcalloc(ha->temp_pool,
                                        sizeof(ngx_array_t) * ha->hsize);
     if (ha->dns_wc_tail_hash == NULL) {
@@ -709,7 +712,7 @@ ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type)
     return NGX_OK;
 }
 
-
+/*将键值对添加到键数组中*/
 ngx_int_t
 ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     ngx_uint_t flags)
@@ -722,7 +725,7 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     ngx_hash_key_t  *hk;
 
     last = key->len;
-
+	/*通配符*/
     if (flags & NGX_HASH_WILDCARD_KEY) {
 
         /*
@@ -730,33 +733,34 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
          *     "*.example.com", ".example.com", and "www.example.*"
          */
 
-        n = 0;
+        n = 0;/* '*'的个数 */
 
         for (i = 0; i < key->len; i++) {
-
+			/*如果星号(*)有多个，则退出*/
             if (key->data[i] == '*') {
                 if (++n > 1) {
                     return NGX_DECLINED;
                 }
             }
 
+			/*如果存在两点相临，则退出*/
             if (key->data[i] == '.' && key->data[i + 1] == '.') {
                 return NGX_DECLINED;
             }
         }
-
+		/* 针对情况1：".example.com" */
         if (key->len > 1 && key->data[0] == '.') {
             skip = 1;
             goto wildcard;
         }
 
         if (key->len > 2) {
-
+			/* 针对情况2："*.example.com" */
             if (key->data[0] == '*' && key->data[1] == '.') {
                 skip = 2;
                 goto wildcard;
             }
-
+			/* 针对情况3： "www.example.*" */
             if (key->data[i - 2] == '.' && key->data[i - 1] == '*') {
                 skip = 0;
                 last -= 2;
@@ -774,7 +778,7 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     k = 0;
 
     for (i = 0; i < last; i++) {
-        if (!(flags & NGX_HASH_READONLY_KEY)) {
+        if (!(flags & NGX_HASH_READONLY_KEY)) {/*非只读键，则转换成小写*/
             key->data[i] = ngx_tolower(key->data[i]);
         }
         k = ngx_hash(k, key->data[i]);
@@ -785,7 +789,7 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     /* check conflicts in exact hash */
 
     name = ha->keys_hash[k].elts;
-
+	/*检测键是否冲突*/
     if (name) {
         for (i = 0; i < ha->keys_hash[k].nelts; i++) {
             if (last != name[i].len) {
@@ -805,14 +809,14 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
             return NGX_ERROR;
         }
     }
-
+	/*将键名存放到keys_hash数组中*/
     name = ngx_array_push(&ha->keys_hash[k]);
     if (name == NULL) {
         return NGX_ERROR;
     }
 
     *name = *key;
-
+	/*将键值对放到keys数组中*/
     hk = ngx_array_push(&ha->keys);
     if (hk == NULL) {
         return NGX_ERROR;
@@ -828,17 +832,17 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
 wildcard:
 
     /* wildcard hash */
-
+	/*skip是键名的有效起始索引，last是键名的有效结束索引*/
     k = ngx_hash_strlow(&key->data[skip], &key->data[skip], last - skip);
 
     k %= ha->hsize;
 
-    if (skip == 1) {
+    if (skip == 1) {/*针对 .example.com 的情况 */
 
         /* check conflicts in exact hash for ".example.com" */
 
         name = ha->keys_hash[k].elts;
-
+		/*冲突检测*/
         if (name) {
             len = last - skip;
 
@@ -860,7 +864,7 @@ wildcard:
                 return NGX_ERROR;
             }
         }
-
+		/*保存键名*/
         name = ngx_array_push(&ha->keys_hash[k]);
         if (name == NULL) {
             return NGX_ERROR;
@@ -890,7 +894,7 @@ wildcard:
 
         len = 0;
         n = 0;
-
+		/*倒置存放，如将"*.example.com"转换成"com.example."*/
         for (i = last - 1; i; i--) {
             if (key->data[i] == '.') {
                 ngx_memcpy(&p[n], &key->data[i + 1], len);
@@ -930,7 +934,7 @@ wildcard:
         keys = &ha->dns_wc_tail_hash[k];
     }
 
-
+	/*存放键值对*/
     hk = ngx_array_push(hwc);
     if (hk == NULL) {
         return NGX_ERROR;
@@ -945,7 +949,7 @@ wildcard:
     /* check conflicts in wildcard hash */
 
     name = keys->elts;
-
+	/*检测键名冲突*/
     if (name) {
         len = last - skip;
 
@@ -965,7 +969,7 @@ wildcard:
             return NGX_ERROR;
         }
     }
-
+	/*存放转换之前的键名*/
     name = ngx_array_push(keys);
     if (name == NULL) {
         return NGX_ERROR;

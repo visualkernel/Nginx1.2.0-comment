@@ -119,9 +119,9 @@ struct ngx_module_s {
 
     ngx_uint_t            version;//当前模块版本号
 
-    void                 *ctx;//当前模块的上下文
+    void                 *ctx;//当前模块的上下文,一般用于表示不同模块中同种类型模块具备的通用接口
     ngx_command_t        *commands;/* 与模块相关的指令数组 */
-    ngx_uint_t            type;//模块类型，由各种“标识”按“|”组合
+    ngx_uint_t            type;//模块类型，由各种“标识”按"或"(|)组合
 
     ngx_int_t           (*init_master)(ngx_log_t *log);//为什么参数不是ngx_cycle_t?
 
@@ -146,9 +146,9 @@ struct ngx_module_s {
 
 
 typedef struct {
-    ngx_str_t             name;
-    void               *(*create_conf)(ngx_cycle_t *cycle);
-    char               *(*init_conf)(ngx_cycle_t *cycle, void *conf);
+    ngx_str_t             name;/*模块的名称*/
+    void               *(*create_conf)(ngx_cycle_t *cycle);/*解析配置文件之前调用*/
+    char               *(*init_conf)(ngx_cycle_t *cycle, void *conf);/*解析配置文件之后调用*/
 } ngx_core_module_t;
 
 
@@ -173,7 +173,7 @@ struct ngx_conf_s {
     ngx_conf_file_t      *conf_file;
     ngx_log_t            *log;
 
-    void                 *ctx;
+    void                 *ctx;//?
     ngx_uint_t            module_type;
     ngx_uint_t            cmd_type;
 

@@ -56,7 +56,7 @@ typedef struct {
 
 struct ngx_pool_s {
     ngx_pool_data_t       d;
-    size_t                max; /* 内存池的最大容量 */
+    size_t                max; /* 用于衡量申请的size是否为large块 */
     ngx_pool_t           *current;/* 下一次分配空间时开始匹配的内存池 */
     ngx_chain_t          *chain;/* 缓冲区链 */
     ngx_pool_large_t     *large;/* 大的数据块，大小超过了max */

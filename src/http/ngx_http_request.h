@@ -381,14 +381,14 @@ struct ngx_http_request_s {
     time_t                            start_sec;
     ngx_msec_t                        start_msec;
 
-    ngx_uint_t                        method;
-    ngx_uint_t                        http_version;
+    ngx_uint_t                        method;/*方法类型*/
+    ngx_uint_t                        http_version;/*协议版本*/
 
     ngx_str_t                         request_line;
-    ngx_str_t                         uri;
-    ngx_str_t                         args;
-    ngx_str_t                         exten;
-    ngx_str_t                         unparsed_uri;
+    ngx_str_t                         uri;/*解码后的uri*/
+    ngx_str_t                         args;/*URI参数*/
+    ngx_str_t                         exten;/*文件扩展名*/
+    ngx_str_t                         unparsed_uri;/*未解码的原始请求*/
 
     ngx_str_t                         method_name;
     ngx_str_t                         http_protocol;

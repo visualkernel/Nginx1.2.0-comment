@@ -103,10 +103,10 @@ typedef unsigned long               ngx_atomic_uint_t;
 
 typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 
-
+//将old值与lock值比较，如果相等，则将lock值设置为set值，返回1，否则不做修改，返回0
 #define ngx_atomic_cmp_set(lock, old, set)                                    \
     __sync_bool_compare_and_swap(lock, old, set)
-
+//将value的值加上add,返回value之前的值
 #define ngx_atomic_fetch_add(value, add)                                      \
     __sync_fetch_and_add(value, add)
 
@@ -261,7 +261,7 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 
 #endif
 
-
+//在不支持atomic情况自己实现的原子操作
 #if !(NGX_HAVE_ATOMIC_OPS)
 
 #define NGX_HAVE_ATOMIC_OPS  0

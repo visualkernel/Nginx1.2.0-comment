@@ -113,7 +113,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     if (respawn != NGX_PROCESS_DETACHED) {
 
         /* Solaris 9 still has no AF_LOCAL */
-
+		/*设置进程之间的通讯管道*/
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1)
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -342,7 +342,7 @@ ngx_signal_handler(int signo)
 
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
             if (ngx_daemonized) {
-                ngx_noaccept = 1;
+                ngx_noaccept = 1;//不接受客户端请求
                 action = ", stop accepting connections";
             }
             break;
@@ -384,7 +384,7 @@ ngx_signal_handler(int signo)
             ngx_sigio = 1;
             break;
 
-        case SIGCHLD:
+        case SIGCHLD://子进程终止
             ngx_reap = 1;
             break;
         }
@@ -437,13 +437,16 @@ ngx_signal_handler(int signo)
     }
 
     if (signo == SIGCHLD) {
+		//设置子进程的状态
         ngx_process_get_status();
     }
 
     ngx_set_errno(err);
 }
 
-
+/**
+ * @brief 获取退出的子进程信息，修改子进程的状态
+ */
 static void
 ngx_process_get_status(void)
 {
@@ -457,7 +460,7 @@ ngx_process_get_status(void)
     one = 0;
 
     for ( ;; ) {
-        pid = waitpid(-1, &status, WNOHANG);
+        pid = waitpid(-1, &status, WNOHANG);/*获取退出的子进程状态信息*/
 
         if (pid == 0) {
             return;
@@ -501,7 +504,7 @@ ngx_process_get_status(void)
 
         one = 1;
         process = "unknown process";
-
+		/*设置pid对应进程对象的退出状态*/
         for (i = 0; i < ngx_last_process; i++) {
             if (ngx_processes[i].pid == pid) {
                 ngx_processes[i].status = status;
@@ -536,7 +539,7 @@ ngx_process_get_status(void)
                           process, pid, WEXITSTATUS(status));
             ngx_processes[i].respawn = 0;
         }
-
+		/*释放与进程相关的互斥锁*/
         ngx_unlock_mutexes(pid);
     }
 }

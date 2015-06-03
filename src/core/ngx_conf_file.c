@@ -306,7 +306,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
             continue;
         }
 
-		//遍历模块的所有命令
+		//遍历模块的所有命令，找到匹配的命令
         for ( /* void */ ; cmd->name.len; cmd++) {
 
             if (name->len != cmd->name.len) {
@@ -378,14 +378,14 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
             /* set up the directive's configuration context */
 
             conf = NULL;
-
-            if (cmd->type & NGX_DIRECT_CONF) {
+			
+            if (cmd->type & NGX_DIRECT_CONF) {/*顶层的直接指令，如daemon,work_processes等*/
                 conf = ((void **) cf->ctx)[ngx_modules[i]->index];
 
-            } else if (cmd->type & NGX_MAIN_CONF) {
+            } else if (cmd->type & NGX_MAIN_CONF) {/*顶层块级指令，如http,events等*/
                 conf = &(((void **) cf->ctx)[ngx_modules[i]->index]);
 
-            } else if (cf->ctx) {
+            } else if (cf->ctx) {/*其它情况，如server,location等*/
                 confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
                 if (confp) {

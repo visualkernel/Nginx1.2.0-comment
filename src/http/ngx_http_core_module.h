@@ -170,7 +170,7 @@ typedef struct {
 
     ngx_hash_keys_arrays_t    *variables_keys;
 
-    ngx_array_t               *ports;
+	ngx_array_t               *ports;//http{}下所有监听端口
 
     ngx_uint_t                 try_files;       /* unsigned  try_files:1 */
 
@@ -245,7 +245,21 @@ typedef struct {
     ngx_uint_t                 naddrs;
 } ngx_http_port_t;
 
+//监听端口配置
+/**
+listen 127.0.0.1:8000;
+listen 127.0.0.1;
+listen 8000;
+listen *:8000;
+listen localhost:8000;
 
+ ipv6:
+listen [::]:8000;
+listen [::1];
+
+ unix-domain:
+listen unix:/var/run/nginx.sock;
+ * */
 typedef struct {
     ngx_int_t                  family;
     in_port_t                  port;
@@ -256,17 +270,18 @@ typedef struct {
 typedef struct {
     ngx_http_listen_opt_t      opt;
 
-    ngx_hash_t                 hash;
-    ngx_hash_wildcard_t       *wc_head;
-    ngx_hash_wildcard_t       *wc_tail;
+    ngx_hash_t                 hash;//精确匹配server_name的hash
+    ngx_hash_wildcard_t       *wc_head;//通配符前置hash
+    ngx_hash_wildcard_t       *wc_tail;//通配符后置hash
 
 #if (NGX_PCRE)
     ngx_uint_t                 nregex;
-    ngx_http_server_name_t    *regex;
+    ngx_http_server_name_t    *regex;/* arry of ngx_http_server_name_t */
 #endif
 
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *default_server;
+	//一个端口可能在多个虚拟server{}中配置使用
     ngx_array_t                servers;  /* array of ngx_http_core_srv_conf_t */
 } ngx_http_conf_addr_t;
 

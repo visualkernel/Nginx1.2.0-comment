@@ -33,19 +33,19 @@ typedef void (*ngx_event_save_peer_session_pt)(ngx_peer_connection_t *pc,
     void *data);
 #endif
 
-
+//主动连接其它服务器
 struct ngx_peer_connection_s {
     ngx_connection_t                *connection;
 
-    struct sockaddr                 *sockaddr;
+    struct sockaddr                 *sockaddr;//远程服务器的socket地址
     socklen_t                        socklen;
-    ngx_str_t                       *name;
+    ngx_str_t                       *name;//远程服务器名称
 
-    ngx_uint_t                       tries;
+    ngx_uint_t                       tries;//允许失败重连的最大次数
 
-    ngx_event_get_peer_pt            get;
-    ngx_event_free_peer_pt           free;
-    void                            *data;
+    ngx_event_get_peer_pt            get;//获取连接的方法
+    ngx_event_free_peer_pt           free;//释放连接的方法
+    void                            *data;/*上面两个方法的参数*/
 
 #if (NGX_SSL)
     ngx_event_set_peer_session_pt    set_session;
@@ -56,13 +56,13 @@ struct ngx_peer_connection_s {
     ngx_atomic_t                    *lock;
 #endif
 
-    ngx_addr_t                      *local;
+    ngx_addr_t                      *local;//本机的地址信息
 
-    int                              rcvbuf;
+    int                              rcvbuf;//接收缓冲区大小
 
     ngx_log_t                       *log;
 
-    unsigned                         cached:1;
+    unsigned                         cached:1;//为1表示上面connection已缓存
 
                                      /* ngx_connection_log_error_e */
     unsigned                         log_error:2;

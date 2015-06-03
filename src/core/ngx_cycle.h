@@ -45,12 +45,12 @@ struct ngx_cycle_s {
     ngx_connection_t         *free_connections;//可用的连接池
     ngx_uint_t                free_connection_n;
 
-    ngx_queue_t               reusable_connections_queue;//可重复使用的连接队列
+    ngx_queue_t               reusable_connections_queue;//元素ngx_connection_t类型，可重复使用的连接队列
 
     ngx_array_t               listening;//每个成员为ngx_listening_t类型,表示监听端口及相关参数
     ngx_array_t               pathes;
     ngx_list_t                open_files;
-    ngx_list_t                shared_memory;//ngx_shm_zone_t
+    ngx_list_t                shared_memory;//共享内存列表，每个元素是ngx_shm_zone_t类型
 
     ngx_uint_t                connection_n;
     ngx_uint_t                files_n;
@@ -59,7 +59,7 @@ struct ngx_cycle_s {
     ngx_event_t              *read_events;//所有读事件对象
     ngx_event_t              *write_events;//所有写事件对象
 
-    ngx_cycle_t              *old_cycle;
+    ngx_cycle_t              *old_cycle;/*引用旧的ngx_cycle_t对象*/
 
     ngx_str_t                 conf_file;//配置文件完整路径
     ngx_str_t                 conf_param;//命令行-g指定的配置字符串
