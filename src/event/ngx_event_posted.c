@@ -10,8 +10,8 @@
 #include <ngx_event.h>
 
 
-ngx_thread_volatile ngx_event_t  *ngx_posted_accept_events;
-ngx_thread_volatile ngx_event_t  *ngx_posted_events;
+ngx_thread_volatile ngx_event_t  *ngx_posted_accept_events;/*连接事件队列*/
+ngx_thread_volatile ngx_event_t  *ngx_posted_events;/*普通事件队列*/
 
 #if (NGX_THREADS)
 ngx_mutex_t                      *ngx_posted_events_mutex;

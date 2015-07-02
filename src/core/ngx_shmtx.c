@@ -58,7 +58,7 @@ ngx_shmtx_destory(ngx_shmtx_t *mtx)
 #endif
 }
 
-
+/*非阻塞试图获取锁，返回0表示失败，1表示成功*/
 ngx_uint_t
 ngx_shmtx_trylock(ngx_shmtx_t *mtx)
 {
@@ -131,7 +131,7 @@ ngx_shmtx_lock(ngx_shmtx_t *mtx)
     }
 }
 
-
+/*释放锁*/
 void
 ngx_shmtx_unlock(ngx_shmtx_t *mtx)
 {

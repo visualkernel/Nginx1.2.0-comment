@@ -178,7 +178,10 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_null_string, 0, NULL }
 };
 
-
+/**
+ * @brief 建立连接后，该函数作为监听对象的handler，由事件框架回调
+ * @param c
+ */
 void
 ngx_http_init_connection(ngx_connection_t *c)
 {
@@ -204,13 +207,13 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     rev = c->read;
     rev->handler = ngx_http_init_request;
-    c->write->handler = ngx_http_empty_handler;
+    c->write->handler = ngx_http_empty_handler;/*不做任何工作*/
 
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
 #endif
 
-    if (rev->ready) {
+    if (rev->ready) {/*套接字上已缓存客户端发来的数据*/
         /* the deferred accept(), rtsig, aio, iocp */
 
         if (ngx_use_accept_mutex) {
@@ -222,8 +225,10 @@ ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
+	/*将事件加入定时器中*/
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
+	/*将读事件加入epoll中*/
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
@@ -233,7 +238,10 @@ ngx_http_init_connection(ngx_connection_t *c)
     }
 }
 
-
+/**
+ * @brief 可读事件的回调处理函数
+ * @param rev
+ */
 static void
 ngx_http_init_request(ngx_event_t *rev)
 {
@@ -259,9 +267,9 @@ ngx_http_init_request(ngx_event_t *rev)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
 #endif
 
-    c = rev->data;
+    c = rev->data;/*与事件相关的TCP连接对象*/
 
-    if (rev->timedout) {
+    if (rev->timedout) {/*已超时*/
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
 
         ngx_http_close_connection(c);
@@ -270,7 +278,7 @@ ngx_http_init_request(ngx_event_t *rev)
 
     c->requests++;
 
-    hc = c->data;
+    hc = c->data;/*与TCP连接相关的HTTP连接对象*/
 
     if (hc == NULL) {
         hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
@@ -280,7 +288,7 @@ ngx_http_init_request(ngx_event_t *rev)
         }
     }
 
-    r = hc->request;
+    r = hc->request;/*与HTTP连接对象相关的请求对象*/
 
     if (r) {
         ngx_memzero(r, sizeof(ngx_http_request_t));
@@ -449,7 +457,7 @@ ngx_http_init_request(ngx_event_t *rev)
     if (r->header_in == NULL) {
         r->header_in = c->buffer;
     }
-
+	//构造请求的内存池
     r->pool = ngx_create_pool(cscf->request_pool_size, c->log);
     if (r->pool == NULL) {
         ngx_http_close_connection(c);
@@ -488,7 +496,7 @@ ngx_http_init_request(ngx_event_t *rev)
 
     r->main = r;
     r->count = 1;
-
+	//设置请求的开始时间
     tp = ngx_timeofday();
     r->start_sec = tp->sec;
     r->start_msec = tp->msec;
@@ -703,7 +711,10 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
 #endif
 
-
+/**
+ * @brief 读取和解析请求行
+ * @param rev
+ */
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
@@ -720,7 +731,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "http process request line");
 
-    if (rev->timedout) {
+    if (rev->timedout) {/*超时*/
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         c->timedout = 1;
         ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
@@ -738,7 +749,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 return;
             }
         }
-
+		/*解析请求行*/
         rc = ngx_http_parse_request_line(r, r->header_in);
 
         if (rc == NGX_OK) {
@@ -913,7 +924,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
             c->log->action = "reading client request headers";
 
             rev->handler = ngx_http_process_request_headers;
-            ngx_http_process_request_headers(rev);
+            ngx_http_process_request_headers(rev);/*读取和解析请求头部*/
 
             return;
         }
@@ -952,7 +963,10 @@ ngx_http_process_request_line(ngx_event_t *rev)
     }
 }
 
-
+/**
+ * @brief 读取和解析请求头部
+ * @param rev
+ */
 static void
 ngx_http_process_request_headers(ngx_event_t *rev)
 {
@@ -1034,11 +1048,11 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 return;
             }
         }
-
+		/*解析头部中的一行*/
         rc = ngx_http_parse_header_line(r, r->header_in,
                                         cscf->underscores_in_headers);
 
-        if (rc == NGX_OK) {
+        if (rc == NGX_OK) {/*成功解析一行*/
 
             if (r->invalid_header && cscf->ignore_invalid_headers) {
 
@@ -1095,7 +1109,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
             continue;
         }
-
+		/*整个头部解析完成*/
         if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
 
             /* a whole header has been parsed successfully */
@@ -1113,12 +1127,12 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 return;
             }
 
-            ngx_http_process_request(r);
+            ngx_http_process_request(r);/*处理解析后的请求*/
 
             return;
         }
 
-        if (rc == NGX_AGAIN) {
+        if (rc == NGX_AGAIN) {/*一行解析未完成，还需要继续接收头部数据*/
 
             /* a header line parsing is still not complete */
 
@@ -1594,7 +1608,10 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-
+/**
+ * @brief 处理解析完头部后的请求
+ * @param r
+ */
 static void
 ngx_http_process_request(ngx_http_request_t *r)
 {
@@ -1653,7 +1670,7 @@ ngx_http_process_request(ngx_http_request_t *r)
     }
 
 #endif
-
+	/*头部解析完后，不再检测连接的超时，将连接从定时器中删除*/
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
@@ -1664,7 +1681,7 @@ ngx_http_process_request(ngx_http_request_t *r)
     (void) ngx_atomic_fetch_add(ngx_stat_writing, 1);
     r->stat_writing = 1;
 #endif
-
+	/*重新设置连接的读写请求处理函数，以便后续的请求处理*/
     c->read->handler = ngx_http_request_handler;
     c->write->handler = ngx_http_request_handler;
     r->read_event_handler = ngx_http_block_reading;

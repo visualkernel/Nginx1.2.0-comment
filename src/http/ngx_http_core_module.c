@@ -882,7 +882,12 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
     }
 }
 
-
+/**
+ * @brief 通用的checker方法。
+ * @param r
+ * @param ph /*阶段的处理器*/
+ * @return 
+ */
 ngx_int_t
 ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 {
@@ -896,25 +901,25 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "generic phase: %ui", r->phase_handler);
 
-    rc = ph->handler(r);
+    rc = ph->handler(r);/*调用处理函数*/
 
-    if (rc == NGX_OK) {
+    if (rc == NGX_OK) {/*进入下一阶段*/
         r->phase_handler = ph->next;
         return NGX_AGAIN;
     }
 
-    if (rc == NGX_DECLINED) {
+    if (rc == NGX_DECLINED) {/*进入下一个处理器*/
         r->phase_handler++;
         return NGX_AGAIN;
     }
 
-    if (rc == NGX_AGAIN || rc == NGX_DONE) {
+    if (rc == NGX_AGAIN || rc == NGX_DONE) {/*仍停留在该处理器上*/
         return NGX_OK;
     }
 
     /* rc == NGX_ERROR || rc == NGX_HTTP_...  */
 
-    ngx_http_finalize_request(r, rc);
+    ngx_http_finalize_request(r, rc);/*结束请求*/
 
     return NGX_OK;
 }
@@ -1156,7 +1161,7 @@ ngx_http_core_post_access_phase(ngx_http_request_t *r,
                    "post access phase: %ui", r->phase_handler);
 
     access_code = r->access_code;
-
+	/*当access_code不为0时表示没有访问权限*/
     if (access_code) {
         if (access_code == NGX_HTTP_FORBIDDEN) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -1193,6 +1198,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+	/*如果没有配置try_files，则继续下一个处理器*/
     if (clcf->try_files == NULL) {
         r->phase_handler++;
         return NGX_AGAIN;
@@ -2718,11 +2724,12 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_http_core_srv_conf_t    *cscf, **cscfp;
     ngx_http_core_main_conf_t   *cmcf;
 
+	/*srv层的ngx_http_conf_ctx_t*/
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
-
+	/*main层的ngx_http_conf_ctx_t*/
     http_ctx = cf->ctx;
     ctx->main_conf = http_ctx->main_conf;
 
@@ -2768,7 +2775,7 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
 
     /* the server configuration context */
-
+	/* ngx_http_core_srv_conf_t */
     cscf = ctx->srv_conf[ngx_http_core_module.ctx_index];
     cscf->ctx = ctx;
 
@@ -2851,8 +2858,9 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
-
-	pctx = cf->ctx;//location所属server{}的配置上下文
+	//pctx是location所属server{}的配置ngx_http_conf_ctx_t
+	//(或嵌套父级location{}的配置ngx_http_conf_ctx_t)
+	pctx = cf->ctx;
     ctx->main_conf = pctx->main_conf;
     ctx->srv_conf = pctx->srv_conf;
 	//构建loc_conf配置指针数组
@@ -2898,13 +2906,13 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             clcf->name = *name;
             clcf->noregex = 1;
 
-        } else if (len == 1 && mod[0] == '~') {//location ~ 大小字母敏感
+        } else if (len == 1 && mod[0] == '~') {//location ~ 大小字母敏感,正则匹配
 
             if (ngx_http_core_regex_location(cf, clcf, name, 0) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }
 
-        } else if (len == 2 && mod[0] == '~' && mod[1] == '*') {//location ~* 大小字母不敏感
+        } else if (len == 2 && mod[0] == '~' && mod[1] == '*') {//location ~* 大小字母不敏感，正则匹配
 
             if (ngx_http_core_regex_location(cf, clcf, name, 1) != NGX_OK) {
                 return NGX_CONF_ERROR;
@@ -2957,7 +2965,7 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             clcf->name = *name;
 
             if (name->data[0] == '@') {
-                clcf->named = 1;
+                clcf->named = 1;/*命名location*/
             }
         }
     }

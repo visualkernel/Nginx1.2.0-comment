@@ -481,7 +481,7 @@ typedef struct {
     ngx_uint_t    connections;//每个worker进程的最大连接数，worker_connections配置项
     ngx_uint_t    use;//使用的事件模型，usr配置项，参数有epoll,select,poll,/dev/poll,kqueue,rtsig,eventport
 
-    ngx_flag_t    multi_accept;//worker进程接收尽可能多的新连接，multi_accept配置项
+    ngx_flag_t    multi_accept;//为1表示worker进程接收尽可能多的新连接，multi_accept配置项
     ngx_flag_t    accept_mutex;//实现负载均衡，实现轮流处理连接。accept_mutex配置项
 
     ngx_msec_t    accept_mutex_delay;//在获取accept锁失败后，worker进程从新开始接收新连接的最大间隔时间。

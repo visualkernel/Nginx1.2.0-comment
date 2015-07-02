@@ -273,13 +273,14 @@ typedef struct {
 
 typedef void (*ngx_http_client_body_handler_pt)(ngx_http_request_t *r);
 
+/*请求体*/
 typedef struct {
-    ngx_temp_file_t                  *temp_file;
+    ngx_temp_file_t                  *temp_file;/*存放包体的临时文件*/
     ngx_chain_t                      *bufs;
     ngx_buf_t                        *buf;
-    off_t                             rest;
+    off_t                             rest;/*根据content-length和已经接收的长度，计算剩余还需接收的长度*/
     ngx_chain_t                      *to_write;
-    ngx_http_client_body_handler_pt   post_handler;
+    ngx_http_client_body_handler_pt   post_handler;/*包体接收完毕后的回调函数*/
 } ngx_http_request_body_t;
 
 
@@ -402,9 +403,9 @@ struct ngx_http_request_s {
 
     ngx_http_virtual_names_t         *virtual_names;
 
-    ngx_int_t                         phase_handler;
+    ngx_int_t                         phase_handler;/*指示使用的处理器下标*/
     ngx_http_handler_pt               content_handler;
-    ngx_uint_t                        access_code;
+    ngx_uint_t                        access_code;/*非0表示没有访问权限*/
 
     ngx_http_variable_value_t        *variables;
 
@@ -414,7 +415,7 @@ struct ngx_http_request_s {
     u_char                           *captures_data;
 #endif
 
-    size_t                            limit_rate;
+    size_t                            limit_rate;/*请求响应的限制速率，每秒多少字节*/
 
     /* used to learn the Apache compatible response length without a header */
     size_t                            header_size;

@@ -86,8 +86,8 @@ int eventfd(u_int initval)
 
 
 typedef struct {
-    ngx_uint_t  events;
-    ngx_uint_t  aio_requests;
+    ngx_uint_t  events;/*调用epoll_wait最多可获取的事件个数，由epoll_events指定，默认值为512*/
+    ngx_uint_t  aio_requests;/*初始化异步I/O事件个数，由worker_aio_requests指定，默认值为512*/
 } ngx_epoll_conf_t;
 
 
@@ -128,14 +128,14 @@ static ngx_str_t      epoll_name = ngx_string("epoll");
 
 static ngx_command_t  ngx_epoll_commands[] = {
 
-    { ngx_string("epoll_events"),
+    { ngx_string("epoll_events"),/*调用epoll_wait最多可获取的事件个数*/
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       0,
       offsetof(ngx_epoll_conf_t, events),
       NULL },
 
-    { ngx_string("worker_aio_requests"),
+    { ngx_string("worker_aio_requests"),/*初始化异步I/O事件个数*/
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       0,
@@ -341,6 +341,7 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 static void
 ngx_epoll_done(ngx_cycle_t *cycle)
 {
+	/*关闭epoll描述符*/
     if (close(ep) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "epoll close() failed");
@@ -368,7 +369,7 @@ ngx_epoll_done(ngx_cycle_t *cycle)
     ngx_aio_ctx = 0;
 
 #endif
-
+	/*释放event_list内存空间*/
     ngx_free(event_list);
 
     event_list = NULL;

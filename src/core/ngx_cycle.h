@@ -74,12 +74,12 @@ typedef struct {
      ngx_flag_t               daemon;/* 是否为守护进程，daemon配置项 */
      ngx_flag_t               master;/* 是否为主-工作者进程模式，master_process配置项*/
 
-     ngx_msec_t               timer_resolution;//系统调用gettimeofday的执行频率，timer_resolution配置项
+     ngx_msec_t               timer_resolution;//系统调用gettimeofday的执行频率(毫秒)，timer_resolution配置项
 
      ngx_int_t                worker_processes; /* 工作者进程数，worker_processes配置项 */
      ngx_int_t                debug_points;//调试点,debug_points配置项
 
-     ngx_int_t                rlimit_nofile;//?
+     ngx_int_t                rlimit_nofile;//打开文件描述符的最大数量
      ngx_int_t                rlimit_sigpending;//限制信号队列的大小，如果信号队列已满，用户再发送的信号会被丢掉，worker_rlimit_sigpending配置项
      off_t                    rlimit_core;//限制coredump产生core文件大小，worker_rlimit_core配置项
 

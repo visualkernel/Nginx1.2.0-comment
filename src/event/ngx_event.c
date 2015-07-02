@@ -204,12 +204,14 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     ngx_uint_t  flags;
     ngx_msec_t  timer, delta;
 
-	// 计算超时时间
+	/*如果设置了定时器的间隔时间，则不再需要设置epoll_wait的超时时间timer，
+	 * 防止epoll_wait阻塞时间过长导致nginx缓存时间得不到即时的更新*/
     if (ngx_timer_resolution) {
-        timer = NGX_TIMER_INFINITE;
+        timer = NGX_TIMER_INFINITE;/*检测事件不需要等待*/
         flags = 0;
 
     } else {
+		/*否则将timer设置为最近将要发生的事件时间与当前的时间的差值*/
         timer = ngx_event_find_timer();
         flags = NGX_UPDATE_TIME;
 
@@ -221,18 +223,20 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 
 #endif
     }
-
+	/*使用了accept_mutex锁*/
     if (ngx_use_accept_mutex) {
+		/* 如果ngx_accept_disabled为正，表明连接数已经超过了连接最大量的7/8,
+		 * 则不再接受新连接*/
         if (ngx_accept_disabled > 0) {
             ngx_accept_disabled--;
-
         } else {
+			/* 如果连接数任何没有超过限制，则试图获取accept_mutex锁来处理新的连接*/
             if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
                 return;
             }
 
             if (ngx_accept_mutex_held) {
-                flags |= NGX_POST_EVENTS;
+                flags |= NGX_POST_EVENTS;/* NGX_POST_EVENTS标志指明将搜集到的事件放置到队列中 */
 
             } else {
                 if (timer == NGX_TIMER_INFINITE
@@ -245,23 +249,26 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 
     delta = ngx_current_msec;
-	/* 等待和处理监听的事件 */
+	/* 使用真正的事件机制(如epoll)，检测和搜集事件 */
 	/* #define ngx_process_events   ngx_event_actions.process_events*/
     (void) ngx_process_events(cycle, timer, flags);
-
+	/*计算ngx_process_events函数消耗的时间毫秒数*/
     delta = ngx_current_msec - delta;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "timer delta: %M", delta);
 
+	/* 1、处理监听连接事件队列 */
     if (ngx_posted_accept_events) {
         ngx_event_process_posted(cycle, &ngx_posted_accept_events);
     }
-
+	/*处理完连接事件后立即释放accept_mutex锁，减少执锁时间，以便让其它进程处理新的连接请求*/
     if (ngx_accept_mutex_held) {
         ngx_shmtx_unlock(&ngx_accept_mutex);
     }
-
+	
+	/* 2、在delta毫秒内可能有新的定时器事件超时，
+	 * 调用ngx_event_expire_timers处理红黑树中所有超时的定时器事件 */
     if (delta) {
         ngx_event_expire_timers();
     }
@@ -269,6 +276,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "posted events %p", ngx_posted_events);
 
+	/* 3、处理普通事件队列 */
     if (ngx_posted_events) {
         if (ngx_threaded) {
             ngx_wakeup_worker_thread(cycle);
@@ -829,7 +837,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #else
 
-        rev->handler = ngx_event_accept;/*初始化监听套接字的读事件*/
+        rev->handler = ngx_event_accept;/*设置监听套接字的读事件处理函数*/
 
 		/*如果使用了accept_mutex互斥锁，不会立即将监听套接字加入到事件机制中*/
 		/*而是在之后哪个worker进程拥有互斥锁，它就将监听套接字加入到事件机制中(猜测)？*/

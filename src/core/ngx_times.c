@@ -385,7 +385,11 @@ ngx_gmtime(time_t t, ngx_tm_t *tp)
     tp->ngx_tm_wday = (ngx_tm_wday_t) wday;
 }
 
-
+/**
+ * @brief 获取未来一天内的某个时刻的时间
+ * @param when 一天内的某个时刻(距离当天00:00:00的秒数)
+ * @return 
+ */
 time_t
 ngx_next_time(time_t when)
 {
@@ -406,11 +410,11 @@ ngx_next_time(time_t when)
     if (next == -1) {
         return -1;
     }
-
+	/*如果晚于当前时间，则直接返回这个时间*/
     if (next - now > 0) {
         return next;
     }
-
+	/*如果早于当前时间，则返回下一天的同一时刻的时间*/
     tm.tm_mday++;
 
     /* mktime() should normalize a date (Jan 32, etc) */

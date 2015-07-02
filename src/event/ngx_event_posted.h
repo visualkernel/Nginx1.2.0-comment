@@ -37,7 +37,7 @@ extern ngx_mutex_t  *ngx_posted_events_mutex;
                        "update posted event %p", ev);                         \
     }
 
-//线路安全
+//添加事件到队列，线程安全
 #define ngx_post_event(ev, queue)                                             \
                                                                               \
     ngx_mutex_lock(ngx_posted_events_mutex);                                  \

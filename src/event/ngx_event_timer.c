@@ -54,7 +54,7 @@ ngx_event_timer_init(ngx_log_t *log)
 
 /**
  * @brief 找到keyword(时间)最小的节点（事件）
- * @return 节点的时间与当前时间的差值
+ * @return 节点的时间与当前时间的差值,如果为0，表示红黑树中已经含有超时需触发的事件
  */
 ngx_msec_t
 ngx_event_find_timer(void)
@@ -107,6 +107,7 @@ ngx_event_expire_timers(void)
         /* node->key <= ngx_current_time */
 		//如果事件超时（事件时间<=当前时间）
         if ((ngx_msec_int_t) (node->key - ngx_current_msec) <= 0) {
+			/*获取timer字段所在的事件*/
             ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
 
 #if (NGX_THREADS)
